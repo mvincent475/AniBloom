@@ -52,3 +52,7 @@ After a separately approved, CI-green production release, request these unauthen
 - `https://anibloom-personal.vercel.app/catalog/series/current_season.json`
 
 Check preview isolation, the old public site remaining unchanged, relevant edge-case catalog requests, GitHub CI status, and personal release-state sync. A Vercel `READY` status alone is insufficient.
+
+## Release hook isolation
+
+The controlled release workflow checks the Vercel deploy hook against `ops/personal-deployment-state.json` **before** sending its HTTP request. The URL must be HTTPS, hosted by `api.vercel.com`, and have the deploy-hook path for project `prj_lLLlEfAAz4htYZn4hTEg0xI4wRy9`. It must not have query parameters or fragments. Do not paste the hook URL or its token into the repository, logs, or chat. The hook is still created manually for the personal Vercel project and `main` branch, and the first production release remains gated by verified CI and release authorization.
