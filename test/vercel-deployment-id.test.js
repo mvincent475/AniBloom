@@ -27,3 +27,22 @@ test("ignores unrelated GitHub statuses and malformed Vercel targets", () => {
     null,
   );
 });
+
+test("release resolution never mistakes another team's Vercel project for the personal project", () => {
+  const expected = { team: "vincentmelgo475-1530", project: "anibloom-personal" };
+  const statuses = [
+    {
+      context: "Vercel",
+      state: "success",
+      target_url: "https://vercel.com/personal-bcb9/anibloom/4BaBBTStujmcuEqX1JxGW8L6zPAQ",
+    },
+    {
+      context: "Vercel",
+      state: "success",
+      target_url: "https://vercel.com/vincentmelgo475-1530/anibloom-personal/9Pn9Q2jFBkcjPxgkUZKGhCtYHxAm",
+    },
+  ];
+  assert.equal(resolveVercelDeploymentId(statuses, expected), "dpl_9Pn9Q2jFBkcjPxgkUZKGhCtYHxAm");
+  assert.equal(resolveVercelDeploymentId(statuses.slice(0, 1), expected), null);
+  assert.equal(resolveVercelDeploymentId(statuses.slice(1), { ...expected, project: "other-app" }), null);
+});

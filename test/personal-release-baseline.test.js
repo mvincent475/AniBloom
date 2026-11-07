@@ -108,3 +108,11 @@ test("first personal release notes start after the verified personal deployment,
   assert.doesNotMatch(workflow, /range="\$target"/);
   assert.match(workflow, /state\["releaseHistoryStarted"\] = True/);
 });
+
+test("production workflow cannot resolve another Vercel project and cannot deploy stale main", async () => {
+  const workflow = await readFile(new URL("../.github/workflows/sync-version.yml", import.meta.url), "utf8");
+  assert.match(workflow, /RELEASE_TARGET_SHA.*git rev-parse origin\/main/);
+  assert.match(workflow, /VERCEL_TEAM_SLUG: vincentmelgo475-1530/);
+  assert.match(workflow, /VERCEL_PROJECT_NAME: anibloom-personal/);
+  assert.match(workflow, /curl --config - --fail/);
+});
