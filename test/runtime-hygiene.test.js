@@ -87,7 +87,7 @@ test("README matches the public AniBloom product, installation, catalog and supp
   assert.ok(readme.includes("**Production:** `v" + releaseState.lastDeploymentVersion + "`"));
   assert.ok(readme.includes("**Development:** `v" + addonVersion + "`"));
   assert.ok(readme.includes("https://anibloom-personal.vercel.app/manifest.json"));
-  assert.ok(readme.split(/\r?\n/).some(line => line === "[Install AniBloom](https://anibloom-personal.vercel.app/manifest.json) · [Homepage](https://anibloom-personal.vercel.app/) · [Support the addon](https://buymeacoffee.com/mark475) · [Releases](https://github.com/AniBloomHQ/AniBloom/releases)"));
+  assert.ok(readme.split(/\r?\n/).some(line => line === "[Install AniBloom](https://anibloom-personal.vercel.app/manifest.json) · [Homepage](https://anibloom-personal.vercel.app/) · [Support the addon](https://buymeacoffee.com/mark475) · [Releases](https://github.com/mvincent475/AniBloom/releases)"));
   assert.doesNotMatch(readme, /buymeacoffee\.com\/melgom475/i);
   assert.match(home, /process\.env\.DONATION_URL/);
   assert.match(home, /DEFAULT_DONATION_URL = "https:\/\/buymeacoffee\.com\/mark475"/);
