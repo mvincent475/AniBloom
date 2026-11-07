@@ -4,12 +4,12 @@ This document applies to [mvincent475/AniBloom](https://github.com/mvincent475/A
 
 ## Verified configuration (2026-11-07)
 
-- GitHub repository: public, default branch `main`. The `main` ruleset blocks deletion and non-fast-forward updates, but has no pull-request or status-check requirement. The owner enabled GitHub Actions, but no workflow run had yet appeared during recheck.
+- GitHub repository: public, default branch `main`. PR #1 was merged at `1dff6bb2f32917bad3b34cfee81c6cc7a31f54a3` after green PR CI and full-history secret scan. The merged commit passed main CI, history scan, and CodeQL. The ruleset still blocks deletion and non-fast-forward updates **without** requiring pull requests or passing checks.
 - Vercel team: `vincentmelgo475-1530`; project: `anibloom-personal`; Git source: `mvincent475/AniBloom`.
 - Production domain: `https://anibloom-personal.vercel.app`, verified in Vercel project domains.
-- Imported production deployment of commit `61457476cabb89d0d68e0465bed2dfde4093ee73`: status `READY`. This does **not** prove anonymous HTTP access or functional endpoints.
-- Upstash integration confirmed: the dedicated `anibloom-personal` Redis database is active, and Vercel lists `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`, and `REDIS_URL` for both Production and Preview. No credential values were read. Runtime connectivity remains untested until a new deployment uses these variables.
-- Vercel Authentication was enabled with scope `all_except_custom_domains`, which must be checked against Nuvio's ability to fetch the manifest without an interactive login.
+- Production now serves the independently deployed main commit `1dff6bb2f32917bad3b34cfee81c6cc7a31f54a3` from deployment `dpl_9Pn9Q2jFBkcjPxgkUZKGhCtYHxAm` (`READY`). The original import remains as a distinct earlier deployment, for two verified personal production deployments.
+- Upstash integration confirmed: the dedicated `anibloom-personal` database responded to `PING` with `PONG`. Vercel lists `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `REDIS_URL` for Production and Preview. After live catalog requests, AniBloom response-cache and incoming-limiter key families were observed in Redis. Credentials were not retrieved.
+- Vercel Authentication is enabled with scope `all_except_custom_domains` (Standard Protection semantics). With account-authorized access, homepage, three manifests and representative series/movie catalogs returned HTTP 200. **Unauthenticated Nuvio access remains unverified** and must be tested independently.
 - `vercel.json` specifies `git.deploymentEnabled: false`: commits do not automatically deploy, by design.
 
 ## GitHub setup
@@ -24,12 +24,16 @@ This document applies to [mvincent475/AniBloom](https://github.com/mvincent475/A
 
 1. Confirm Git integration uses `mvincent475/AniBloom`, production branch `main`, root directory `/`, and the existing `api/` functions and `vercel.json` rewrites. No custom output directory is necessary.
 2. For Nuvio access, the manifest, catalog, and static asset endpoints need to be reachable anonymously. Use a deployment-protection configuration that keeps Preview protected but allows your chosen production domain; verify this with an unauthenticated client. A Vercel-authenticated webpage is not suitable for Nuvio's unauthenticated addon requests.
-3. The **dedicated** Upstash Redis database and required integration variable names are now configured in Vercel. Keep the database private and independent of upstream. The Vercel API currently reports these variables as `plain`; confirm the token is appropriately concealed in the Vercel dashboard or change its type to **Secret** using supported integration controls. Do not copy values into Git, CI logs or this document. Test actual Redis connectivity after deploying code with these variables. Without working Redis, the app uses per-instance fallback rate limiting, which cannot enforce a global budget.
+3. The **dedicated** Redis integration is now active, and the application's response-cache and limiter key families were observed after live requests. Keep the database separate from upstream. Vercel reports the integration-managed `UPSTASH_REDIS_REST_TOKEN` and `REDIS_URL` as `plain` with a `readable-secret` security issue. Convert them to **Secret** where the integration supports it, or follow the provider's secure reconfiguration procedure; never remove working credentials before a replacement is ready. Vercel's connector could not perform the type update. Do not reveal any credentials in Git or chat.
 4. For TMDB-assisted fallback ID matching (used in the public instance), optionally set a **separate** `TMDB_API_TOKEN` in Vercel project environment variables. Without it, the resolver skips TMDB lookups; other mapping providers remain available. Store only a real token in the secure environment settings, never in Git.
 5. Optionally configure `DONATION_URL` as an HTTPS URL. The application already has a default.
-6. Leave automatic Git deployment disabled while using the controlled release pipeline. Re-enabling it requires redesigning CI/deployment gating so a push cannot deploy untested code.
+6. Automatic Git deployment remains disabled. One authorized manual production deployment was made after green CI. Re-enabling automatic deployment requires designing a CI deployment gate so an untested push cannot go live.
 
-## Release-state migration (must precede first personal release)
+## Verified personal deployment record
+
+The independently verified production state is recorded in [`ops/personal-deployment-state.json`](../ops/personal-deployment-state.json). This is a deployment record, **not a tagged personal release**; it distinguishes live deployment evidence from upstream-imported release metadata. Any new personal deployment must update this record after verification.
+
+## Release-state migration (must precede first tagged personal release)
 
 `ops/release-state.json` was imported from upstream and contains upstream deployment/tag/CI history. Treat those fields as **inherited historical data**, not as a verified record of personal releases. Before enabling `PERSONAL_RELEASES_ENABLED`, reconcile the baseline with verified personal Vercel deployment ID, commit, version, GitHub tags/releases and actual deployment count; review the release limit policy separately. Never fabricate personal smoke-test or CI results by copying upstream values.
 

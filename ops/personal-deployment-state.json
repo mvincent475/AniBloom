@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "scope": "personal",
+  "repository": "https://github.com/mvincent475/AniBloom",
+  "vercelTeam": "vincentmelgo475-1530",
+  "vercelProject": "anibloom-personal",
+  "vercelProjectId": "prj_lLLlEfAAz4htYZn4hTEg0xI4wRy9",
+  "productionDomain": "https://anibloom-personal.vercel.app",
+  "verifiedProductionDeploymentCount": 2,
+  "importedBaseline": {
+    "deploymentId": "dpl_91Shj4HYPv4A761qeopMCS6pHT9M",
+    "gitCommitSha": "61457476cabb89d0d68e0465bed2dfde4093ee73"
+  },
+  "latestProductionDeployment": {
+    "deploymentId": "dpl_9Pn9Q2jFBkcjPxgkUZKGhCtYHxAm",
+    "gitCommitSha": "1dff6bb2f32917bad3b34cfee81c6cc7a31f54a3",
+    "gitBranch": "main",
+    "state": "READY",
+    "target": "production",
+    "manifestVersion": "2.15.0",
+    "releaseTag": null,
+    "checks": {
+      "mainCi": {
+        "runId": 42335641362,
+        "result": "success"
+      },
+      "historySecretScan": {
+        "runId": 42335641360,
+        "result": "success"
+      },
+      "codeQl": {
+        "runId": 42335641353,
+        "result": "success"
+      }
+    },
+    "smokeTest": {
+      "client": "Vercel account-authorized connector",
+      "anonymousAccess": "not_tested",
+      "endpoints": [
+        {
+          "path": "/",
+          "status": 200
+        },
+        {
+          "path": "/manifest.json",
+          "status": 200
+        },
+        {
+          "path": "/romaji/manifest.json",
+          "status": 200
+        },
+        {
+          "path": "/native/manifest.json",
+          "status": 200
+        },
+        {
+          "path": "/catalog/series/current_season.json",
+          "status": 200
+        },
+        {
+          "path": "/catalog/movie/current_season_movies.json",
+          "status": 200
+        }
+      ]
+    }
+  },
+  "redis": {
+    "database": "anibloom-personal",
+    "directPing": "PONG",
+    "namespaceFamiliesObserved": [
+      "anibloom:anilist:response",
+      "anibloom:catalog:incoming"
+    ],
+    "applicationCredentialsNotRetrieved": true
+  },
+  "releaseAutomation": "disabled_until_legacy_state_migrated",
+  "recordedOn": "2026-11-07"
+}
