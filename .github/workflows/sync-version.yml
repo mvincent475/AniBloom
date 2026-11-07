@@ -211,6 +211,8 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$VERCEL_DEPLOY_HOOK_URL"
+          # Fail closed if a copied upstream hook points outside AniBloom Personal.
+          node scripts/validate-personal-deploy-hook.mjs
           # Keep the secret-bearing hook URL out of process arguments and logs.
           printf 'url = "%s"\n' "$VERCEL_DEPLOY_HOOK_URL" | curl --config - --fail --silent --show-error --request POST
 
