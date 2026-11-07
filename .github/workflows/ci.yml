@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   test:
+    name: Main CI Tests
     if: ${{ !contains(github.event.head_commit.message || '', '[deploy-prod]') && !contains(github.event.head_commit.message || '', '[finalize-prod:') }}
     runs-on: ubuntu-latest
     permissions:
