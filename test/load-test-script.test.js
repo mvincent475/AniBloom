@@ -19,27 +19,27 @@ test("load probe requires a recognized AniBloom HTTPS deployment", () => {
     /AniBloom Vercel preview deployment/,
   );
   assert.throws(
-    () => parseLoadTestArgs(["--target", "https://anibloom.vercel.app"]),
+    () => parseLoadTestArgs(["--target", "https://anibloom-personal.vercel.app"]),
     /explicit --allow-production/,
   );
 });
 
 test("load probe rejects unsafe targets, paths, and excessive load", () => {
   const base = {
-    target: "https://anibloom-preview123-personal-bcb9.vercel.app",
+    target: "https://anibloom-personal-preview123-bcb9.vercel.app",
     path: "/catalog/series/current_season.json",
     requests: 10,
     concurrency: 2,
     timeoutMs: 5000,
   };
-  assert.throws(() => validateLoadTestConfig({ ...base, target: "http://anibloom-preview123.vercel.app" }), /HTTPS origin/);
+  assert.throws(() => validateLoadTestConfig({ ...base, target: "http://anibloom-personal-preview123.vercel.app" }), /HTTPS origin/);
   assert.throws(() => validateLoadTestConfig({ ...base, path: "/api/admin" }), /Path must be/);
   assert.throws(() => validateLoadTestConfig({ ...base, requests: 101 }), /requests must be/);
   assert.throws(() => validateLoadTestConfig({ ...base, concurrency: 21 }), /concurrency must be/);
   assert.throws(
     () => validateLoadTestConfig({
       ...base,
-      target: "https://anibloom.vercel.app",
+      target: "https://anibloom-personal.vercel.app",
       allowProduction: true,
       requests: 41,
     }),
@@ -49,7 +49,7 @@ test("load probe rejects unsafe targets, paths, and excessive load", () => {
 
 test("load probe accepts bounded preview and explicitly opted-in production runs", () => {
   const preview = parseLoadTestArgs([
-    "--target", "https://anibloom-preview123-personal-bcb9.vercel.app",
+    "--target", "https://anibloom-personal-preview123-bcb9.vercel.app",
     "--requests", "40",
     "--concurrency", "10",
   ]);
@@ -57,7 +57,7 @@ test("load probe accepts bounded preview and explicitly opted-in production runs
   assert.equal(preview.allowProduction, false);
 
   const production = parseLoadTestArgs([
-    "--target", "https://anibloom.vercel.app",
+    "--target", "https://anibloom-personal.vercel.app",
     "--requests", "40",
     "--concurrency", "10",
     "--allow-production",
@@ -67,7 +67,7 @@ test("load probe accepts bounded preview and explicitly opted-in production runs
 
 test("load probe bypasses CDN URL cache while preserving the catalog path", async () => {
   const config = {
-    target: "https://anibloom-preview123-personal-bcb9.vercel.app",
+    target: "https://anibloom-personal-preview123-bcb9.vercel.app",
     path: "/catalog/series/current_season.json",
     requests: 8,
     concurrency: 4,
@@ -96,7 +96,7 @@ test("load probe bypasses CDN URL cache while preserving the catalog path", asyn
 
 test("load probe records HTTP and response-contract failures without leaking bodies", async () => {
   const report = await runLoadTest({
-    target: "https://anibloom-preview123-personal-bcb9.vercel.app",
+    target: "https://anibloom-personal-preview123-bcb9.vercel.app",
     path: "/catalog/series/current_season.json",
     requests: 2,
     concurrency: 2,
@@ -112,7 +112,7 @@ test("load probe records HTTP and response-contract failures without leaking bod
 test("load probe forwards the local Vercel OIDC token only to preview requests", async () => {
   const token = "test-oidc-token-not-a-secret";
   const preview = await runLoadTest({
-    target: "https://anibloom-preview123-personal-bcb9.vercel.app",
+    target: "https://anibloom-personal-preview123-bcb9.vercel.app",
     path: "/catalog/series/current_season.json",
     requests: 1,
     concurrency: 1,
@@ -127,7 +127,7 @@ test("load probe forwards the local Vercel OIDC token only to preview requests",
   assert.equal(JSON.stringify(preview).includes(token), false);
 
   await runLoadTest({
-    target: "https://anibloom.vercel.app",
+    target: "https://anibloom-personal.vercel.app",
     path: "/catalog/series/current_season.json",
     requests: 1,
     concurrency: 1,

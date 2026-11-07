@@ -170,7 +170,7 @@ export async function validateProduction(baseUrl, expectedVersion, fetchImpl = f
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const baseUrl = process.env.PRODUCTION_BASE_URL || "https://anibloom.vercel.app";
+  const baseUrl = process.env.PRODUCTION_BASE_URL || "https://anibloom-personal.vercel.app";
   const expectedVersion = process.env.EXPECTED_VERSION;
   if (!expectedVersion) throw new Error("EXPECTED_VERSION is required.");
   await validateProduction(baseUrl, expectedVersion, (url) => retryTransientProductionFetch(fetch, url), { allowLegacy: process.env.ALLOW_LEGACY_PRODUCTION_CONTRACT === "true" });

@@ -1,7 +1,7 @@
 name: Post-release catalog snapshot
 
 env:
-  ADDON_DOMAIN: anibloom.vercel.app
+  ADDON_DOMAIN: anibloom-personal.vercel.app
 
 # Catalog snapshots consume production function capacity; run only when explicitly requested.
 on:

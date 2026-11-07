@@ -33,9 +33,9 @@ vercel env run -- node scripts/load-probe.mjs \
 A production smoke-level probe is intentionally more constrained:
 
 ```sh
-curl -fsS https://anibloom.vercel.app/catalog/series/current_season.json >/dev/null
+curl -fsS https://anibloom-personal.vercel.app/catalog/series/current_season.json >/dev/null
 node scripts/load-probe.mjs \
-  --target https://anibloom.vercel.app \
+  --target https://anibloom-personal.vercel.app \
   --path /catalog/series/current_season.json \
   --requests 20 \
   --concurrency 5 \

@@ -86,8 +86,8 @@ test("README matches the public AniBloom product, installation, catalog and supp
   assert.ok(readme.includes("version-" + addonVersion + "-blue"));
   assert.ok(readme.includes("**Production:** `v" + releaseState.lastDeploymentVersion + "`"));
   assert.ok(readme.includes("**Development:** `v" + addonVersion + "`"));
-  assert.ok(readme.includes("https://anibloom.vercel.app/manifest.json"));
-  assert.ok(readme.split(/\r?\n/).some(line => line === "[Install AniBloom](https://anibloom.vercel.app/manifest.json) · [Homepage](https://anibloom.vercel.app/) · [Support the addon](https://buymeacoffee.com/mark475) · [Releases](https://github.com/AniBloomHQ/AniBloom/releases)"));
+  assert.ok(readme.includes("https://anibloom-personal.vercel.app/manifest.json"));
+  assert.ok(readme.split(/\r?\n/).some(line => line === "[Install AniBloom](https://anibloom-personal.vercel.app/manifest.json) · [Homepage](https://anibloom-personal.vercel.app/) · [Support the addon](https://buymeacoffee.com/mark475) · [Releases](https://github.com/AniBloomHQ/AniBloom/releases)"));
   assert.doesNotMatch(readme, /buymeacoffee\.com\/melgom475/i);
   assert.match(home, /process\.env\.DONATION_URL/);
   assert.match(home, /DEFAULT_DONATION_URL = "https:\/\/buymeacoffee\.com\/mark475"/);
@@ -110,11 +110,11 @@ test("Vercel configuration enables Fluid Compute for production functions", asyn
 test("home page uses only canonical unversioned catalog URLs", async () => {
   const source = await readFile("api/home-selector.js", "utf8");
   const config = await readFile("api/config.js", "utf8");
-  assert.match(config, /BASE_URL = "https:\/\/anibloom\.vercel\.app"/);
-  assert.match(config, /ADDON_DOMAIN = "anibloom\.vercel\.app"/);
+  assert.match(config, /BASE_URL = "https:\/\/anibloom-personal\.vercel\.app"/);
+  assert.match(config, /ADDON_DOMAIN = "anibloom-personal\.vercel\.app"/);
   const validator = await readFile("scripts/validate-production.mjs", "utf8");
-  assert.match(validator, /https:\/\/anibloom\.vercel\.app/);
-  assert.match(config, /REPOSITORY_URL = "https:\/\/github\.com\/AniBloomHQ\/AniBloom"/);
+  assert.match(validator, /https:\/\/anibloom-personal\.vercel\.app/);
+  assert.match(config, /REPOSITORY_URL = "https:\/\/github\.com\/mvincent475\/AniBloom"/);
   assert.doesNotMatch(source, /\/v5\//);
   assert.doesNotMatch(source, /v5 resolver/i);
   assert.match(source, /const type = id\.endsWith\("_movies"\) \? "movie" : "series";/);
