@@ -156,7 +156,7 @@ test("periodic production availability monitor stays removed without affecting r
 test("main and pull-request CI expose distinct names for required status checks", () => {
   const mainCI = read("../.github/workflows/ci.yml");
   const prCI = read("../.github/workflows/pr-ci.yml");
-  assert.match(mainCI, /  test:\\n    name: Main CI Tests\\n/);
-  assert.match(prCI, /  test:\\n    name: Pull Request Tests\\n/);
+  assert.match(mainCI, /  test:\n    name: Main CI Tests\n/);
+  assert.match(prCI, /  test:\n    name: Pull Request Tests\n/);
   assert.notEqual("Main CI Tests", "Pull Request Tests");
 });
