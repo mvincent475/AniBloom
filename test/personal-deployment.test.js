@@ -48,3 +48,24 @@ test("no first-party text source refers to the original production host", async 
   await walk(root);
   assert.deepEqual(bad, []);
 });
+
+test("copied GitHub automation remains opt-in and targets this repository", async () => {
+  const [ci, release, vercel] = await Promise.all([
+    readFile(new URL("../.github/workflows/ci.yml", import.meta.url), "utf8"),
+    readFile(new URL("../.github/workflows/sync-version.yml", import.meta.url), "utf8"),
+    readFile(new URL("../vercel.json", import.meta.url), "utf8"),
+  ]);
+
+  assert.ok(ci.includes("vars.PERSONAL_VERSION_AUTOMATION_ENABLED == 'true'"),
+    "automatic version bumps need explicit opt-in");
+  assert.ok(release.includes("vars.PERSONAL_RELEASES_ENABLED == 'true'"),
+    "production release workflow needs explicit opt-in");
+  for (const workflow of [ci, release]) {
+    assert.ok(workflow.includes("owner: ${{ github.repository_owner }}"),
+      "GitHub App access must be scoped to the current repository owner");
+    assert.ok(!workflow.includes("owner: AniBloomHQ"),
+      "personal automation must not authenticate against upstream");
+  }
+  assert.equal(JSON.parse(vercel).git?.deploymentEnabled, false,
+    "Git-based deployment must stay disabled until CI deployment gating is designed");
+});
