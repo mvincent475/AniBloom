@@ -4,7 +4,7 @@ This document applies to [mvincent475/AniBloom](https://github.com/mvincent475/A
 
 ## Verified configuration (2026-11-07)
 
-- GitHub repository: public, default branch `main`; at inspection time `main` was unprotected and no GitHub Actions runs were reported.
+- GitHub repository: public, default branch `main`. The `main` ruleset now blocks deletion and non-fast-forward updates, but has no pull-request or status-check requirement. No Actions runs were reported after the draft PR was opened.
 - Vercel team: `vincentmelgo475-1530`; project: `anibloom-personal`; Git source: `mvincent475/AniBloom`.
 - Production domain: `https://anibloom-personal.vercel.app`, verified in Vercel project domains.
 - Imported production deployment of commit `61457476cabb89d0d68e0465bed2dfde4093ee73`: status `READY`. This does **not** prove anonymous HTTP access or functional endpoints.
@@ -15,7 +15,7 @@ This document applies to [mvincent475/AniBloom](https://github.com/mvincent475/A
 ## GitHub setup
 
 1. Enable Actions for this repository and run the PR test workflow, security scan, and main CI to establish real green checks before release.
-2. Protect `main` with required passing PR/CI checks, prevent force pushes, and require pull requests. Do not select check names before they exist.
+2. Extend the existing `main` ruleset to require pull requests and the verified passing PR/CI checks. Existing deletion/force-push prevention is insufficient as the only production gate. Do not select check names before they exist.
 3. Keep the original repository separate; do not reuse its GitHub App installation, release token, deployment hook, or environment secrets.
 4. Automatic versioning is gated by repository variable `PERSONAL_VERSION_AUTOMATION_ENABLED=true`. Leave unset until a GitHub App scoped to this repository is installed and its `AUTOMATION_APP_CLIENT_ID` (repository variable) and `AUTOMATION_APP_PRIVATE_KEY` (repository secret) are configured securely.
 5. Production release workflow is gated by repository variable `PERSONAL_RELEASES_ENABLED=true`. Leave unset until CI, release metadata, and the **personal** deployment hook are verified. Store `VERCEL_DEPLOY_HOOK_URL` only as a GitHub Actions secret and create it for the **personal Vercel project**, not for the upstream project.
