@@ -160,3 +160,18 @@ test("main and pull-request CI expose distinct names for required status checks"
   assert.match(prCI, /  test:\n    name: Pull Request Tests\n/);
   assert.notEqual("Main CI Tests", "Pull Request Tests");
 });
+
+test("personal release preflight is manual-only, read-only, and non-deploying", () => {
+  const yaml = read("../.github/workflows/personal-release-preflight.yml");
+  assert.match(yaml, /on:\n  workflow_dispatch:\n/);
+  assert.doesNotMatch(yaml, /\n  (?:push|pull_request|schedule):/);
+  assert.match(yaml, /permissions:\n  contents: read/);
+  assert.match(yaml, /persist-credentials: false/);
+  assert.match(yaml, /node scripts\/validate-personal-deploy-hook\.mjs/);
+  assert.match(yaml, /private-key: \$\{\{ secrets\.AUTOMATION_APP_PRIVATE_KEY \}\}/);
+  assert.match(yaml, /owner: \$\{\{ github\.repository_owner \}\}/);
+  assert.match(yaml, /repositories: AniBloom/);
+  assert.match(yaml, /permission-pull-requests: write/);
+  assert.match(yaml, /gh api installation\/repositories/);
+  assert.doesNotMatch(yaml, /curl|vercel deploy|gh pr create|git push|\[deploy-prod\]/);
+});

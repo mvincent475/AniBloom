@@ -56,3 +56,7 @@ Check preview isolation, the old public site remaining unchanged, relevant edge-
 ## Release hook isolation
 
 The controlled release workflow checks the Vercel deploy hook against `ops/personal-deployment-state.json` **before** sending its HTTP request. The URL must be HTTPS, hosted by `api.vercel.com`, and have the deploy-hook path for project `prj_lLLlEfAAz4htYZn4hTEg0xI4wRy9`. It must not have query parameters or fragments. Do not paste the hook URL or its token into the repository, logs, or chat. The hook is still created manually for the personal Vercel project and `main` branch, and the first production release remains gated by verified CI and release authorization.
+
+## Safe release-credential preflight
+
+After configuring `AUTOMATION_APP_CLIENT_ID` (repository variable), `AUTOMATION_APP_PRIVATE_KEY` (GitHub Actions secret), and `VERCEL_DEPLOY_HOOK_URL` (GitHub Actions secret), run [Personal Release Credential Preflight](https://github.com/mvincent475/AniBloom/actions/workflows/personal-release-preflight.yml) manually on `main`. It validates the Vercel hook project ID **without calling the hook**, creates a short-lived GitHub App token scoped to `mvincent475/AniBloom`, and checks that its installation token sees only this repository. It does not deploy, tag, publish, or create PRs. Do not enable `PERSONAL_VERSION_AUTOMATION_ENABLED` or `PERSONAL_RELEASES_ENABLED` until this preflight passes and a controlled release plan is approved.

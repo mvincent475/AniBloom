@@ -1,0 +1,47 @@
+name: Personal Release Credential Preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Verify Personal Release Credentials
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out protected main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+          package-manager-cache: false
+      - name: Check personal Vercel hook project without triggering it
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: node scripts/validate-personal-deploy-hook.mjs
+      - name: Create restricted GitHub App installation token
+        id: automation-app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510
+        with:
+          client-id: ${{ vars.AUTOMATION_APP_CLIENT_ID || secrets.AUTOMATION_APP_CLIENT_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: AniBloom
+          permission-pull-requests: write
+      - name: Verify token is restricted to the personal repository
+        env:
+          GH_TOKEN: ${{ steps.automation-app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          actual="$(gh api installation/repositories --jq '.repositories[].full_name')"
+          if [ "$actual" != "$GITHUB_REPOSITORY" ]; then
+            echo "App token does not exclusively target the personal repository." >&2
+            exit 1
+          fi
+          echo "Personal GitHub App and Vercel hook validation passed. No deployment triggered."
