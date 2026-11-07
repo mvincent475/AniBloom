@@ -1,7 +1,7 @@
 name: CI, automatic patch versioning, and controlled Vercel release
 
 env:
-  ADDON_DOMAIN: anibloom.vercel.app
+  ADDON_DOMAIN: anibloom-personal.vercel.app
 
 on:
   push:
@@ -44,7 +44,7 @@ concurrency:
 
 jobs:
   release-pipeline:
-    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message || '', '[deploy-prod]') || contains(github.event.head_commit.message || '', '[finalize-prod:') }}
+    if: ${{ vars.PERSONAL_RELEASES_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message || '', '[deploy-prod]') || contains(github.event.head_commit.message || '', '[finalize-prod:')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -344,7 +344,7 @@ jobs:
         with:
           client-id: ${{ vars.AUTOMATION_APP_CLIENT_ID || secrets.AUTOMATION_APP_CLIENT_ID }}
           private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
-          owner: AniBloomHQ
+          owner: ${{ github.repository_owner }}
           repositories: AniBloom
           permission-pull-requests: write
 

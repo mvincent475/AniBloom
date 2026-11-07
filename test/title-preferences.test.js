@@ -128,7 +128,7 @@ test("homepage selector displays three fixed choices and preserves default insta
   for (const mode of ["english", "romaji", "native"]) {
     assert.match(html, new RegExp('<option value="' + mode + '">'));
   }
-  assert.match(html, /nuvio:\/\/anibloom\.vercel\.app\/manifest\.json/);
+  assert.match(html, /nuvio:\/\/anibloom-personal\.vercel\.app\/manifest\.json/);
   assert.match(html, /title-preference-help/);
   assert.doesNotMatch(html, /localStorage|document\.cookie/);
 });

@@ -22,7 +22,7 @@ test("AniBloom homepage follows approved brand and content structure", () => {
 
 test("homepage Open Source footer points to the canonical organization repository", () => {
   const html = render();
-  assert.match(html, /<a href="https:\/\/github\.com\/AniBloomHQ\/AniBloom" target="_blank" rel="noopener noreferrer">◉ &nbsp; Open Source<\/a>/);
+  assert.match(html, /<a href="https:\/\/github\.com\/mvincent475\/AniBloom" target="_blank" rel="noopener noreferrer">◉ &nbsp; Open Source<\/a>/);
   assert.doesNotMatch(html, /github\.com\/mbmelgo\/AniBloom/i);
 });
 
@@ -70,8 +70,8 @@ test("previous three days and airing now icons use complete in-bounds SVG paths"
 
 test("Nuvio deep links and HTTPS manifest fallback are preserved", () => {
   const html = render();
-  assert.match(html, /nuvio:\/\/anibloom\.vercel\.app\/manifest\.json/);
-  assert.match(html, /https:\/\/anibloom\.vercel\.app\/manifest\.json/);
+  assert.match(html, /nuvio:\/\/anibloom-personal\.vercel\.app\/manifest\.json/);
+  assert.match(html, /https:\/\/anibloom-personal\.vercel\.app\/manifest\.json/);
   assert.match(html, /Manual installation:/);
 });
 

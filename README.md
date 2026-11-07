@@ -6,13 +6,15 @@
 
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-2.15.0-blue.svg)](https://github.com/AniBloomHQ/AniBloom/releases)
+[![Version](https://img.shields.io/badge/version-2.15.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
 
 > Where anime blooms.
+>
+> **Personal deployment:** This repository deploys independently at [anibloom-personal.vercel.app](https://anibloom-personal.vercel.app/). The original open-source project remains at [AniBloomHQ/AniBloom](https://github.com/AniBloomHQ/AniBloom); changes here do not change the upstream deployment.
 
 **AniBloom is a catalog-only addon for Nuvio.** It helps you discover anime through eight focused catalogs for upcoming episodes, recently aired episodes, and seasonal releases—including movies.
 
-[Install AniBloom](https://anibloom.vercel.app/manifest.json) · [Homepage](https://anibloom.vercel.app/) · [Support the addon](https://buymeacoffee.com/mark475) · [Releases](https://github.com/AniBloomHQ/AniBloom/releases)
+[Install AniBloom](https://anibloom-personal.vercel.app/manifest.json) · [Homepage](https://anibloom-personal.vercel.app/) · [Support the addon](https://buymeacoffee.com/mark475) · [Releases](https://github.com/mvincent475/AniBloom/releases)
 
 ## What AniBloom is
 
@@ -35,11 +37,11 @@ Install a separate compatible metadata provider in Nuvio to supply detailed titl
 
 ## Installation
 
-1. Open the AniBloom [homepage](https://anibloom.vercel.app/).
+1. Open the AniBloom [homepage](https://anibloom-personal.vercel.app/).
 2. Select **Add to Nuvio**, or copy the manifest URL below into Nuvio.
 
 ```text
-https://anibloom.vercel.app/manifest.json
+https://anibloom-personal.vercel.app/manifest.json
 ```
 
 For manual installation, use the same manifest URL.
@@ -50,14 +52,18 @@ The homepage offers three fixed public manifest URLs. Select a display style bef
 
 | Preference | Manifest URL | Catalog names |
 | --- | --- | --- |
-| English (default) | `https://anibloom.vercel.app/manifest.json` | English |
-| Romaji | `https://anibloom.vercel.app/romaji/manifest.json` | English |
-| Native | `https://anibloom.vercel.app/native/manifest.json` | Japanese |
+| English (default) | `https://anibloom-personal.vercel.app/manifest.json` | English |
+| Romaji | `https://anibloom-personal.vercel.app/romaji/manifest.json` | English |
+| Native | `https://anibloom-personal.vercel.app/native/manifest.json` | Japanese |
 
 English titles fall back to Romaji, then Native; Romaji titles fall back to English, then Native; Native titles fall back to Romaji, then English. Native means the original writing system (not always Japanese).
 
 All variants share the same eight catalog IDs, media identities, search, pagination, and upstream processing. No user accounts, unique manifests, or server-side language preferences are created. Nuvio may treat each URL as a separate installation: remove the old variant when switching to avoid duplicates. Nuvio or a separate metadata provider may override titles shown on detail pages; AniBloom controls its catalog responses, not Nuvio's application language.
 
+
+## Personal deployment setup
+
+See [Personal deployment checklist](docs/personal-deployment.md) for this fork's GitHub and Vercel configuration, deployment protection, distributed rate limiting, and isolated release process.
 
 ## Self-hosting
 
@@ -74,7 +80,7 @@ You can run your own AniBloom instance instead of using the public deployment. T
 1. Clone the repository and enter the project directory:
 
    ```bash
-   git clone https://github.com/AniBloomHQ/AniBloom.git
+   git clone https://github.com/mvincent475/AniBloom.git
    cd AniBloom
    ```
 
@@ -120,7 +126,7 @@ The local preview server implements the homepage, manifest, version, catalog, an
 3. Clone the repository if you have not already, then open its directory:
 
    ```bash
-   git clone https://github.com/AniBloomHQ/AniBloom.git
+   git clone https://github.com/mvincent475/AniBloom.git
    cd AniBloom
    ```
 
@@ -169,7 +175,7 @@ npm install
 
 For a local instance, restart the server after updating. For Vercel, run `vercel --prod` again from the linked project directory after pulling the changes.
 
-## Support the public instance
+## Support the upstream public instance
 
 The public AniBloom instance is currently hosted on Vercel's **Hobby plan**. Its resource and usage limits may affect response times or availability during periods of higher traffic.
 
@@ -179,7 +185,7 @@ If AniBloom is useful to you, you can support its ongoing maintenance and hostin
 
 ## Privacy and operations
 
-- [Public privacy and service-data disclosure](https://anibloom.vercel.app/privacy.html)
+- [Public privacy and service-data disclosure](https://anibloom-personal.vercel.app/privacy.html)
 - [Operational incident-response runbook](docs/operations-incident-response.md)
 - [Catalog upstream resilience](docs/catalog-resilience.md)
 

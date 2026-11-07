@@ -52,8 +52,8 @@ export function validateLoadTestConfig(config) {
   }
 
   const hostname = target.hostname.toLowerCase();
-  const isProduction = hostname === "anibloom.vercel.app";
-  const isAniBloomPreview = /^anibloom-[a-z0-9-]+\.vercel\.app$/.test(hostname);
+  const isProduction = hostname === "anibloom-personal.vercel.app";
+  const isAniBloomPreview = /^anibloom-personal-[a-z0-9-]+\.vercel\.app$/.test(hostname);
   if (!isProduction && !isAniBloomPreview) {
     throw new Error("Target must be the AniBloom production domain or an AniBloom Vercel preview deployment");
   }
