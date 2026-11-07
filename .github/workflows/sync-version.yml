@@ -2,6 +2,8 @@ name: CI, automatic patch versioning, and controlled Vercel release
 
 env:
   ADDON_DOMAIN: anibloom-personal.vercel.app
+  VERCEL_TEAM_SLUG: vincentmelgo475-1530
+  VERCEL_PROJECT_NAME: anibloom-personal
 
 on:
   push:
@@ -168,9 +170,14 @@ jobs:
         if: steps.gate.outputs.release == 'true' && inputs.dry_run != true
         env:
           RELEASE_TARGET_SHA: ${{ steps.gate.outputs.release_target_sha }}
+          REDEPLOY: ${{ steps.gate.outputs.redeploy }}
         run: |
           set -euo pipefail
           git fetch --quiet origin main
+          if [ "$REDEPLOY" = "true" ] && [ "$RELEASE_TARGET_SHA" != "$(git rev-parse origin/main)" ]; then
+            echo "Deploy hook targets main; release commit must match current main HEAD." >&2
+            exit 1
+          fi
           target_version="$(git show "${RELEASE_TARGET_SHA}:api/version.js" | sed -nE 's/export const ADDON_VERSION = "([^"]+)";/\1/p')"
           CURRENT_STATE="$(git show origin/main:ops/release-state.json)" TARGET_VERSION="$target_version" node --input-type=module <<'NODE'
           import { validateReleaseConcurrencyState } from "./scripts/release-integrity.mjs";
@@ -201,7 +208,11 @@ jobs:
         if: steps.gate.outputs.release == 'true' && steps.gate.outputs.redeploy == 'true' && steps.existing_vercel.outputs.needs_deploy == 'true' && inputs.dry_run != true
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-        run: test -n "$VERCEL_DEPLOY_HOOK_URL" && curl --fail --silent --show-error --request POST "$VERCEL_DEPLOY_HOOK_URL"
+        run: |
+          set -euo pipefail
+          test -n "$VERCEL_DEPLOY_HOOK_URL"
+          # Keep the secret-bearing hook URL out of process arguments and logs.
+          printf 'url = "%s"\n' "$VERCEL_DEPLOY_HOOK_URL" | curl --config - --fail --silent --show-error --request POST
 
       - name: Production smoke test
         if: steps.gate.outputs.release == 'true' || inputs.dry_run == true
@@ -374,7 +385,17 @@ jobs:
           if [ -n "$previous" ]; then
             range="$previous..$target"
           else
-            range="$target"
+            # First personal release: do not include inherited upstream history.
+            baseline="$(node -p 'JSON.parse(require("fs").readFileSync("ops/release-state.json", "utf8")).lastDeploymentSha')"
+            if [[ ! "$baseline" =~ ^[0-9a-fA-F]{40}$ ]]; then
+              echo "Verified personal deployment baseline SHA is missing." >&2
+              exit 1
+            fi
+            git merge-base --is-ancestor "$baseline" "$target" || {
+              echo "Release target must descend from the verified personal deployment." >&2
+              exit 1
+            }
+            range="$baseline..$target"
           fi
 
           summary="$(git log --reverse --no-merges --format='%s%x1f%b%x1e' "$range" | node scripts/release-notes.mjs "$tag")"
@@ -423,6 +444,7 @@ jobs:
           state["lastDeploymentVersion"] = version
           state["nextReleaseVersion"] = f"{major}.{minor + 1}.0"
           state["lastDeploymentTag"] = "v" + version
+          state["releaseHistoryStarted"] = True
           state["lastDeployment"] = {
               "version": version,
               "sha": state["lastDeploymentSha"],

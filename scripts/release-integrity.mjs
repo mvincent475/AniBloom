@@ -47,6 +47,7 @@ export function validateVersionConsistency({
   packageVersion,
   productionVersion,
   productionTag,
+  releaseHistoryStarted,
   nextReleaseVersion,
   supersededReleaseVersions = [],
   deploymentsSincePause,
@@ -57,7 +58,11 @@ export function validateVersionConsistency({
     throw new Error(`api/version.js (${addonVersion}) does not match package.json (${packageVersion}).`);
   }
   const isUnreleasedBaseline = productionVersion === "0.0.0" && productionTag === null && deploymentsSincePause === 0;
-  if (!isUnreleasedBaseline && (!/^v\d+\.\d+\.\d+$/.test(productionTag) || productionTag !== `v${productionVersion}`)) {
+  if (releaseHistoryStarted === false) {
+    if (productionTag !== null || productionVersion === "0.0.0") {
+      throw new Error("Untagged deployment baseline must identify an existing deployed version without a release tag.");
+    }
+  } else if (!isUnreleasedBaseline && (!/^v\d+\.\d+\.\d+$/.test(productionTag) || productionTag !== `v${productionVersion}`)) {
     throw new Error(`Production tag ${productionTag} does not match production version ${productionVersion}.`);
   }
   if (!isValidNextReleaseVersion(productionVersion, nextReleaseVersion, supersededReleaseVersions)) {
@@ -115,7 +120,14 @@ export function validateLastDeploymentMetadata(state) {
       deployment.vercelDeploymentId !== state.lastDeploymentId) {
     throw new Error("lastDeployment deployment ID does not match lastDeploymentId.");
   }
-  if (!/^v\d+\.\d+\.\d+$/.test(String(deployment.tag || "")) ||
+  if (state.releaseHistoryStarted === false) {
+    if (state.lastDeploymentTag !== null || deployment.tag !== null) {
+      throw new Error("Untagged deployment baseline must not claim a GitHub release tag.");
+    }
+    if (deployment.releasedAt !== null || deployment.ciRunId !== null || deployment.ciRunUrl !== null) {
+      throw new Error("Untagged deployment baseline must not claim tagged release/CI metadata.");
+    }
+  } else if (!/^v\d+\.\d+\.\d+$/.test(String(deployment.tag || "")) ||
       deployment.tag !== state.lastDeploymentTag ||
       deployment.tag !== `v${deployment.version}`) {
     throw new Error("lastDeployment tag does not match the authoritative release version.");
@@ -183,6 +195,7 @@ export function validateRepositoryReleaseState(root = process.cwd()) {
     packageVersion: packageJson.version,
     productionVersion: state.lastDeploymentVersion,
     productionTag: state.lastDeploymentTag,
+    releaseHistoryStarted: state.releaseHistoryStarted,
     nextReleaseVersion: state.nextReleaseVersion,
     supersededReleaseVersions: state.supersededReleaseVersions,
     deploymentsSincePause: state.deploymentsSincePause,

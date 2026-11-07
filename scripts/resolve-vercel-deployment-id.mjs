@@ -1,4 +1,4 @@
-export function resolveVercelDeploymentId(payload) {
+export function resolveVercelDeploymentId(payload, { team, project } = {}) {
   const statuses = Array.isArray(payload)
     ? payload
     : Array.isArray(payload?.statuses)
@@ -26,6 +26,8 @@ export function resolveVercelDeploymentId(payload) {
     }
 
     const segments = url.pathname.split("/").filter(Boolean);
+    if (team && segments.at(-3) !== team) continue;
+    if (project && segments.at(-2) !== project) continue;
     const deploymentSegment = segments.at(-1) || "";
 
     if (/^dpl_[A-Za-z0-9]+$/.test(deploymentSegment)) {
@@ -47,7 +49,10 @@ if (import.meta.url === new URL(process.argv[1], "file:").href) {
     input += chunk;
   });
   process.stdin.on("end", () => {
-    const deploymentId = resolveVercelDeploymentId(JSON.parse(input));
+    const deploymentId = resolveVercelDeploymentId(JSON.parse(input), {
+      team: process.env.VERCEL_TEAM_SLUG,
+      project: process.env.VERCEL_PROJECT_NAME,
+    });
     if (!deploymentId) {
       process.exitCode = 1;
       return;
