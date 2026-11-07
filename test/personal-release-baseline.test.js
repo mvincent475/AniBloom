@@ -13,6 +13,16 @@ test("an independently deployed personal baseline is not represented as a GitHub
   const ledger = await loadJson("../ops/personal-deployment-state.json");
   const personal = ledger.latestProductionDeployment;
 
+  // Once a real personal GitHub tag has been created, current release-state
+  // intentionally advances while the bootstrap ledger remains immutable.
+  if (state.releaseHistoryStarted === true) {
+    assert.match(state.lastDeploymentTag, /^v\d+\.\d+\.\d+$/);
+    assert.equal(state.lastDeployment.tag, state.lastDeploymentTag);
+    assert.ok(state.totalDeployments >= ledger.verifiedProductionDeploymentCount);
+    assert.equal(state.lastDeployment.sha, state.lastDeploymentSha);
+    return;
+  }
+
   assert.equal(ledger.repository, "https://github.com/mvincent475/AniBloom");
   assert.equal(state.releaseHistoryStarted, false);
   assert.equal(state.lastDeploymentSha, personal.gitCommitSha);

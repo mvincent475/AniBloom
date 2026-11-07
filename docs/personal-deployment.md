@@ -4,18 +4,18 @@ This document applies to [mvincent475/AniBloom](https://github.com/mvincent475/A
 
 ## Verified configuration (2026-11-07)
 
-- GitHub repository: public, default branch `main`. PR #1 was merged at `1dff6bb2f32917bad3b34cfee81c6cc7a31f54a3` after green PR CI and full-history secret scan. The merged commit passed main CI, history scan, and CodeQL. The ruleset still blocks deletion and non-fast-forward updates **without** requiring pull requests or passing checks.
+- GitHub repository: public, default branch `main`. The active ruleset now requires pull requests, passing PR tests, full-history secret scan, CodeQL JavaScript and Actions analyses, and branches up to date with `main`. Force pushes and branch deletion remain blocked. Verified through the ruleset API after the owner's update.
 - Vercel team: `vincentmelgo475-1530`; project: `anibloom-personal`; Git source: `mvincent475/AniBloom`.
 - Production domain: `https://anibloom-personal.vercel.app`, verified in Vercel project domains.
 - Production now serves the independently deployed main commit `1dff6bb2f32917bad3b34cfee81c6cc7a31f54a3` from deployment `dpl_9Pn9Q2jFBkcjPxgkUZKGhCtYHxAm` (`READY`). The original import remains as a distinct earlier deployment, for two verified personal production deployments.
 - Upstash integration confirmed: the dedicated `anibloom-personal` database responded to `PING` with `PONG`. Vercel lists `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` and `REDIS_URL` for Production and Preview. After live catalog requests, AniBloom response-cache and incoming-limiter key families were observed in Redis. Credentials were not retrieved.
-- Vercel Authentication is enabled with scope `all_except_custom_domains` (Standard Protection semantics). With account-authorized access, homepage, three manifests and representative series/movie catalogs returned HTTP 200. **Unauthenticated Nuvio access remains unverified** and must be tested independently.
+- Vercel Authentication is enabled with scope `all_except_custom_domains` (Standard Protection semantics). Account-authorized checks returned HTTP 200 for homepage, three manifests and representative series/movie catalogs; the owner separately confirmed access in an incognito browser.
 - `vercel.json` specifies `git.deploymentEnabled: false`: commits do not automatically deploy, by design.
 
 ## GitHub setup
 
-1. Enable Actions for this repository and run the PR test workflow, security scan, and main CI to establish real green checks before release.
-2. Extend the existing `main` ruleset to require pull requests and passing checks. Once a run with the renamed jobs passes, choose **Pull Request Tests** and **Scan Git history for secrets** as required checks. Existing deletion/force-push prevention alone is insufficient. Keep **Main CI Tests** for post-merge validation.
+1. GitHub Actions is enabled, and PR/main tests, full-history scanning and CodeQL have passed on the current personal repository.
+2. Keep required branch checks **Pull Request Tests**, **Scan Git history for secrets**, **Analyze (actions)** and **Analyze (javascript-typescript)**, with strict up-to-date branches. **Main CI Tests** runs after merge.
 3. Keep the original repository separate; do not reuse its GitHub App installation, release token, deployment hook, or environment secrets.
 4. Automatic versioning is gated by repository variable `PERSONAL_VERSION_AUTOMATION_ENABLED=true`. Leave unset until a GitHub App scoped to this repository is installed and its `AUTOMATION_APP_CLIENT_ID` (repository variable) and `AUTOMATION_APP_PRIVATE_KEY` (repository secret) are configured securely.
 5. Production release workflow is gated by repository variable `PERSONAL_RELEASES_ENABLED=true`. Leave unset until CI, release metadata, and the **personal** deployment hook are verified. Store `VERCEL_DEPLOY_HOOK_URL` only as a GitHub Actions secret and create it for the **personal Vercel project**, not for the upstream project.
@@ -31,11 +31,15 @@ This document applies to [mvincent475/AniBloom](https://github.com/mvincent475/A
 
 ## Verified personal deployment record
 
-The independently verified production state is recorded in [`ops/personal-deployment-state.json`](../ops/personal-deployment-state.json). This is a deployment record, **not a tagged personal release**; it distinguishes live deployment evidence from upstream-imported release metadata. Any new personal deployment must update this record after verification.
+The independently verified *bootstrap-time production snapshot* is in [`ops/personal-deployment-state.json`](../ops/personal-deployment-state.json). It is not a tagged release, and it is not automatically updated after later releases. The authoritative release history after the first tagged personal release is [`ops/release-state.json`](../ops/release-state.json).
 
-## Release-state migration (must precede first tagged personal release)
+## Reconciled personal release baseline
 
-`ops/release-state.json` was imported from upstream and contains upstream deployment/tag/CI history. Treat those fields as **inherited historical data**, not as a verified record of personal releases. Before enabling `PERSONAL_RELEASES_ENABLED`, reconcile the baseline with verified personal Vercel deployment ID, commit, version, GitHub tags/releases and actual deployment count; review the release limit policy separately. Never fabricate personal smoke-test or CI results by copying upstream values.
+`ops/release-state.json` now identifies the verified personal production deployment `dpl_9Pn9Q2jFBkcjPxgkUZKGhCtYHxAm` (commit `1dff6bb2f32917bad3b34cfee81c6cc7a31f54a3`, version `2.15.0`). The personal project had two production deployments, both counted toward the existing ten-deployment checkpoint. The personal GitHub repository had **no release tags** at migration. The state therefore has `releaseHistoryStarted: false` and `lastDeploymentTag: null`; no upstream release/tag is copied into the personal release record.
+
+On the first actual personal release, the workflow must create a genuine personal tag, mark `releaseHistoryStarted: true`, and generate notes from commits after the personal baseline. `ops/personal-deployment-state.json` remains a historical bootstrap snapshot; tagged-release state is recorded separately in `ops/release-state.json`.
+
+**Automatic updates are not enabled by this reconciliation PR.** A dedicated GitHub App installed on `mvincent475/AniBloom` must be configured with minimally necessary Contents and Pull requests access. Set `AUTOMATION_APP_CLIENT_ID` as a GitHub repository variable and `AUTOMATION_APP_PRIVATE_KEY` as an Actions secret. After verification, set `PERSONAL_VERSION_AUTOMATION_ENABLED=true` to create patch-version PRs. Controlled production releases additionally require a deploy hook targeting the **personal** Vercel project and `main` branch, stored as secret `VERCEL_DEPLOY_HOOK_URL`, and an independently enabled `PERSONAL_RELEASES_ENABLED=true` flag. Do not reuse upstream credentials or hooks. The next release baseline is `2.16.0`; automated patch-version PRs do not, by themselves, tag or deploy it.
 
 ## Acceptance checks
 
