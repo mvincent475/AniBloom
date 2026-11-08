@@ -92,7 +92,7 @@ test("homepage offers title styles and automatic BetterPosters without a provide
   assert.doesNotMatch(html,/id="artwork-provider"/);
   assert.doesNotMatch(html,/PostersPlus/);
   assert.doesNotMatch(html,/Catalog artwork source/);
-  assert.match(html,/nuvio:\/\/anibloom\.vercel\.app\/manifest\.json/);
+  assert.match(html,/nuvio:\/\/anibloom-personal\.vercel\.app\/manifest\.json/);
   assert.match(html,/const url=origin\+prefix\+"\/manifest.json"/);
   assert.equal((html.match(/class="catalog-card"/g)||[]).length,8);
   assert.equal((html.match(/class="catalog-card catalog-card-optional"/g)||[]).length,3);
