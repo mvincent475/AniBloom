@@ -204,3 +204,74 @@ test("production validation fails closed when the manifest remains at an older v
   }), /Manifest version 2[.]18[.]0 does not match expected 2[.]19[.]0/);
   assert.ok(manifestReads >= 2 && manifestReads <= 12, "manifest retry budget must be finite");
 });
+
+
+function createRollingCatalogSnapshotMock({ stabilizes }) {
+  const ids = [
+    "upcoming_season", "current_season", "previous_season",
+    "upcoming_season_movies", "current_season_movies", "previous_season_movies",
+    "upcoming_3_days", "previous_3_days", "top_season",
+  ];
+  const manifest = {
+    id: "com.marki.nuvio.anime-releases",
+    version: "2.19.0",
+    logo: "https://example.test/assets/anibloom-icon.png",
+    identityMode: "provider",
+    resources: [{ name: "catalog", types: ["series", "movie"] }],
+    types: ["series", "movie"],
+    catalogs: ids.map(id => ({ id, type: id.endsWith("_movies") ? "movie" : "series", pageSize: 2 })),
+  };
+  const png = new Uint8Array(24);
+  png.set([137, 80, 78, 71, 13, 10, 26, 10]);
+  new DataView(png.buffer).setUint32(16, 192);
+  new DataView(png.buffer).setUint32(20, 192);
+  const reads = [];
+  let secondPageReads = 0;
+  const series = (id) => ({ id, type: "series" });
+  const fetchImpl = async (url) => {
+    const parsed = new URL(url);
+    reads.push(parsed.pathname + parsed.search);
+    if (parsed.pathname === "/manifest.json") return new Response(JSON.stringify(manifest), { status: 200 });
+    if (parsed.pathname === "/assets/anibloom-icon.png") {
+      return new Response(png, { status: 200, headers: { "content-type": "image/png" } });
+    }
+    if (parsed.pathname.startsWith("/meta/")) return new Response("{}", { status: 404 });
+    if (parsed.pathname.startsWith("/catalog/")) {
+      const skip = Number(parsed.searchParams.get("skip") || "0");
+      let metas = [];
+      if (parsed.pathname.endsWith("/current_season.json") && skip === 0) {
+        metas = [series("mal:5114")];
+      } else if (parsed.pathname.endsWith("/previous_3_days.json")) {
+        if (skip === 0) metas = [series("mal:100"), series("mal:101")];
+        if (skip === 2) {
+          secondPageReads += 1;
+          metas = stabilizes && secondPageReads > 1
+            ? [series("mal:102"), series("mal:103")]
+            : [series("mal:101"), series("mal:102")];
+        }
+      }
+      return new Response(JSON.stringify({ metas }), { status: 200 });
+    }
+    throw new Error("Unexpected live validation request " + parsed.pathname);
+  };
+  return { fetchImpl, reads };
+}
+
+test("rolling production validation rechecks a shifting page boundary, then requires a clean full snapshot", async () => {
+  const { fetchImpl, reads } = createRollingCatalogSnapshotMock({ stabilizes: true });
+  assert.equal(await validateProduction("https://example.test", "2.19.0", fetchImpl, {
+    rollingRetryDelayMs: 0,
+  }), true);
+  assert.equal(reads.filter(path => path === "/catalog/series/previous_3_days.json?skip=0").length, 2);
+  assert.equal(reads.filter(path => path === "/catalog/series/current_season.json?skip=0").length, 1,
+    "unrelated catalogs must not be recrawled after a transient rolling-page overlap");
+});
+
+test("rolling production validation still rejects persistent cross-page duplicates after bounded attempts", async () => {
+  const { fetchImpl, reads } = createRollingCatalogSnapshotMock({ stabilizes: false });
+  await assert.rejects(validateProduction("https://example.test", "2.19.0", fetchImpl, {
+    rollingRetryDelayMs: 0,
+  }), /previous_3_days: duplicate catalog identity across pages: mal:101/);
+  const attempts = reads.filter(path => path === "/catalog/series/previous_3_days.json?skip=0").length;
+  assert.ok(attempts > 1 && attempts <= 3, "rolling retries must be finite and only affect the rolling catalog");
+});

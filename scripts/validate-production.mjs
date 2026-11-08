@@ -129,11 +129,64 @@ export async function validateLogoAsset(baseUrl, logoUrl, fetchImpl = fetch) {
 const MAX_PRODUCTION_MANIFEST_READS = 8;
 const DEFAULT_MANIFEST_RETRY_DELAY_MS = 1500;
 
+const MAX_ROLLING_SNAPSHOT_ATTEMPTS = 3;
+const DEFAULT_ROLLING_RETRY_DELAY_MS = 1500;
+
+async function validateCatalogPagination(base, catalogInfo, fetchImpl) {
+  const { id: catalogId } = catalogInfo;
+  const pageSize = Number(catalogInfo.pageSize);
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 1000) {
+    throw new Error(`${catalogId}: manifest page size is invalid.`);
+  }
+
+  const seenIds = new Set();
+  let skip = 0;
+  let page = 0;
+  let reachedEnd = false;
+  while (page < 1000) {
+    const catalogType = catalogTypeForId(catalogId);
+    const response = await fetchImpl(`${base}/catalog/${catalogType}/${catalogId}.json?skip=${skip}`);
+    if (!response.ok) throw new Error(`${catalogId}: HTTP ${response.status} at skip=${skip}`);
+    const catalog = await response.json();
+    if (!Array.isArray(catalog?.metas)) {
+      throw new Error(`${catalogId}: catalog metas must be an array.`);
+    }
+
+    if (catalog.metas.length === 0) {
+      if (skip === 0) validateCatalog(catalog, catalogId, catalogTypeForId(catalogId));
+      reachedEnd = true;
+      break;
+    }
+
+    validateCatalog(catalog, catalogId, catalogTypeForId(catalogId));
+    for (const meta of catalog.metas) {
+      const id = String(meta.id);
+      if (seenIds.has(id)) {
+        throw new Error(`${catalogId}: duplicate catalog identity across pages: ${id}.`);
+      }
+      seenIds.add(id);
+    }
+
+    page += 1;
+    if (catalog.metas.length < pageSize) {
+      reachedEnd = true;
+      break;
+    }
+    skip += pageSize;
+  }
+
+  if (!reachedEnd) throw new Error(`${catalogId}: exceeded the 1000-page validation limit.`);
+}
+
 export async function validateProduction(
   baseUrl,
   expectedVersion,
   fetchImpl = fetch,
-  { allowLegacy = false, manifestRetryDelayMs = DEFAULT_MANIFEST_RETRY_DELAY_MS } = {},
+  {
+    allowLegacy = false,
+    manifestRetryDelayMs = DEFAULT_MANIFEST_RETRY_DELAY_MS,
+    rollingRetryDelayMs = DEFAULT_ROLLING_RETRY_DELAY_MS,
+  } = {},
 ) {
   const base = String(baseUrl).replace(/\/$/, "");
   // Vercel edge locations may briefly serve the previous release after the
@@ -157,49 +210,26 @@ export async function validateProduction(
   await validateLogoAsset(base, manifest.logo, fetchImpl);
 
   for (const catalogInfo of manifest.catalogs) {
-    const { id: catalogId } = catalogInfo;
-    const pageSize = Number(catalogInfo.pageSize);
-    if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 1000) {
-      throw new Error(`${catalogId}: manifest page size is invalid.`);
-    }
-
-    const seenIds = new Set();
-    let skip = 0;
-    let page = 0;
-    let reachedEnd = false;
-    while (page < 1000) {
-      const catalogType = catalogTypeForId(catalogId);
-      const response = await fetchImpl(`${base}/catalog/${catalogType}/${catalogId}.json?skip=${skip}`);
-      if (!response.ok) throw new Error(`${catalogId}: HTTP ${response.status} at skip=${skip}`);
-      const catalog = await response.json();
-      if (!Array.isArray(catalog?.metas)) {
-        throw new Error(`${catalogId}: catalog metas must be an array.`);
-      }
-
-      if (catalog.metas.length === 0) {
-        if (skip === 0) validateCatalog(catalog, catalogId, catalogTypeForId(catalogId));
-        reachedEnd = true;
+    const isRolling = ["upcoming_3_days", "previous_3_days"].includes(catalogInfo.id);
+    const maxAttempts = isRolling ? MAX_ROLLING_SNAPSHOT_ATTEMPTS : 1;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        await validateCatalogPagination(base, catalogInfo, fetchImpl);
         break;
+      } catch (error) {
+        const overlappingRollingPages = isRolling
+          && String(error?.message || "").startsWith(`${catalogInfo.id}: duplicate catalog identity across pages:`);
+        if (!overlappingRollingPages || attempt + 1 >= maxAttempts) throw error;
+        // Rolling windows and independently cached pages may briefly come from
+        // different snapshots. Require the entire rolling catalog to pass on
+        // a subsequent attempt; do not discard duplicates or skip catalog pages.
+        console.warn(`Rolling catalog ${catalogInfo.id} shifted between pages; retrying full catalog validation.`);
+        const delayMs = Number.isFinite(rollingRetryDelayMs)
+          ? Math.max(0, rollingRetryDelayMs)
+          : DEFAULT_ROLLING_RETRY_DELAY_MS;
+        await new Promise(resolve => setTimeout(resolve, delayMs));
       }
-
-      validateCatalog(catalog, catalogId, catalogTypeForId(catalogId));
-      for (const meta of catalog.metas) {
-        const id = String(meta.id);
-        if (seenIds.has(id)) {
-          throw new Error(`${catalogId}: duplicate catalog identity across pages: ${id}.`);
-        }
-        seenIds.add(id);
-      }
-
-      page += 1;
-      if (catalog.metas.length < pageSize) {
-        reachedEnd = true;
-        break;
-      }
-      skip += pageSize;
     }
-
-    if (!reachedEnd) throw new Error(`${catalogId}: exceeded the 1000-page validation limit.`);
   }
 
   const metaResponse = await fetchImpl(`${base}/meta/series/mal%3A39535.json`);
