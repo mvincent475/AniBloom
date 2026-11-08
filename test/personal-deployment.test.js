@@ -108,3 +108,35 @@ test("personal extended manifests remain opt-in across title variants and Vercel
     }
   }
 });
+
+test("personal opt-in ranked manifests use fixed routes with correct title and artwork options", async () => {
+  const { default: manifestHandler } = await import("../api/resolver-manifest.js");
+  const { ADDON_VERSION } = await import("../api/version.js");
+  const { rewrites } = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
+  for (const prefix of ["", "/romaji", "/native"]) {
+    for (const extended of [false, true]) {
+      const path = prefix + (extended ? "/extended" : "") + "/ranked/manifest.json";
+      let result;
+      manifestHandler({ method: "GET", url: path, query: {} }, {
+        status(code) { assert.equal(code, 200); return this; },
+        setHeader() {},
+        json(value) { result = value; return value; },
+      });
+      assert.equal(result.version, ADDON_VERSION, path);
+      assert.equal(result.logo, BASE_URL + "/assets/anibloom-icon.png", path);
+      assert.equal(result.catalogs.length, extended ? 11 : 9, path);
+      assert.equal(result.catalogs.at(-1).id, "top_season", path);
+      assert.deepEqual(result.catalogs.slice(8, -1).map(c => c.id),
+        extended ? ["airing_today", "upcoming_7_days"] : [], path);
+      const art = result.catalogs[0].extra.find(x => x.name === "artwork");
+      assert.deepEqual(art?.options, ["AniList", "BetterPosters", "PostersPlus"], path);
+      const rewrite = rewrites.find(r => r.source === path);
+      assert.ok(rewrite, "Missing Vercel rewrite for " + path);
+      const destination = new URL(rewrite.destination, BASE_URL);
+      assert.equal(destination.pathname, "/api/resolver-manifest", path);
+      assert.equal(destination.searchParams.get("titleMode"), prefix ? prefix.slice(1) : null, path);
+      assert.equal(destination.searchParams.get("ranked"), "1", path);
+      assert.equal(destination.searchParams.get("extended"), extended ? "1" : null, path);
+    }
+  }
+});

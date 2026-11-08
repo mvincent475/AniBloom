@@ -6,7 +6,7 @@
 
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-2.16.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
+[![Version](https://img.shields.io/badge/version-2.17.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
 
 > Where anime blooms.
 >
@@ -29,12 +29,12 @@ AniBloom brings these eight catalogs together in one list:
 - **Upcoming Season** — Anime from the next upcoming season.
 - **Upcoming Season Movies** — Movies from the next upcoming season.
 
-The optional **extended** setup adds two more catalogs:
+The optional **extended** setup adds two more catalogs (using Japan's broadcast calendar for the Airing Today cutoff):
 
-- **Airing Today** — Upcoming episodes through midnight in Manila (UTC+8).
+- **Airing Today** — Upcoming episodes through midnight in Japan Standard Time (JST, UTC+9).
 - **Upcoming 7 days** — Anime with new episodes over the next seven rolling days.
 
-To avoid additional requests for existing installations, the standard manifest continues to expose only the original eight catalogs.
+To avoid additional requests for existing installations, the standard manifest continues to expose only the original eight catalogs. The homepage lists **Airing Today** and **Upcoming 7 days** separately under **Optional extended catalogs**, with links to their extended catalog endpoints. These previews do not silently enable the catalogs in the standard manifest; select the extended installation option to include them.
 
 ## What AniBloom is not
 
@@ -47,6 +47,14 @@ Install a separate compatible metadata provider in Nuvio to supply detailed titl
 The six seasonal series/movie catalogs advertise a fixed selection of optional genres. When supported by the Nuvio client, selecting a genre filters AniList results before pagination; direct catalog requests can also include `genre=Action`. Unfiltered catalogs behave as before. Title searches support English, Romaji, Native and AniList synonym titles, including common accents and punctuation variations. AniList still controls the upstream search candidate set.
 
 **Resource considerations:** Extended feeds are opt-in. The new seven-day feed may consume more AniList schedule pages than the existing three-day feed. Each request remains bounded to eight schedule pages, so a busy week may show an incomplete list. Do not assume this feed is an exhaustive schedule.
+
+### P2 discovery and artwork options (opt-in)
+
+The **Top Anime of the Season** catalog is an optional popularity-ranked view. Existing standard and extended catalogs stay unchanged. Use **Top Season** on the homepage or add `/ranked` immediately before `/manifest.json` to the chosen manifest URL; for example `/romaji/extended/ranked/manifest.json` includes both optional additions.
+
+Catalogs also support an optional **Artwork** filter: **AniList** (default), **BetterPosters**, or **PostersPlus**. Alternative artwork comes directly from the selected external poster provider when compatible; otherwise AniBloom keeps its existing cover. Some Nuvio clients may not expose optional catalog extras. A separately configured public PostersPlus service is required; none is configured by default. These are catalog-preview posters, not detail-page artwork replacements.
+
+Alternative artwork does not create extra AniBloom image requests or change shared catalog data. Live Nuvio compatibility, image availability and production resource impact remain unverified until the Vercel quota issue is resolved. [See setup details and limitations](docs/p2-enhancements.md).
 
 ## Installation
 
@@ -61,7 +69,7 @@ For manual installation, use the same manifest URL.
 
 ### Anime title preferences
 
-Choose a display style and optionally enable extended airing catalogs on the homepage. All six combinations have fixed, stateless manifest URLs:
+Choose a display style and optionally enable extended airing and Top Season catalogs on the homepage. The existing six standard/extended combinations remain unchanged:
 
 | Preference | Standard (8 catalogs) | Extended (10 catalogs) | Catalog names |
 | --- | --- | --- | --- |
@@ -69,11 +77,11 @@ Choose a display style and optionally enable extended airing catalogs on the hom
 | Romaji | `/romaji/manifest.json` | `/romaji/extended/manifest.json` | English |
 | Native | `/native/manifest.json` | `/native/extended/manifest.json` | Japanese |
 
-All paths above are relative to `https://anibloom-personal.vercel.app`. The homepage updates the installation URL when you enable the extended option.
+All paths above are relative to `https://anibloom-personal.vercel.app`. The homepage updates the installation URL when you enable extended airing and/or Top Season. For ranked variants, add `/ranked` before `/manifest.json`; for example, `/romaji/extended/ranked/manifest.json` exposes all eleven optional catalogs. These variants are fixed public routes, not per-user accounts.
 
 English titles fall back to Romaji, then Native; Romaji titles fall back to English, then Native; Native titles fall back to Romaji, then English. Native means the original writing system (not always Japanese).
 
-All variants retain the same eight standard catalog IDs; extended variants add two fixed airing IDs. Media identities, search, pagination, and upstream processing are shared. No user accounts, unique manifests, or server-side language preferences are created. Nuvio may treat each URL as a separate installation: remove the old variant when switching to avoid duplicates. Nuvio or a separate metadata provider may override titles shown on detail pages; AniBloom controls its catalog responses, not Nuvio's application language.
+All variants retain the same eight standard catalog IDs; extended variants add two fixed airing IDs and ranked variants add one fixed Top Season ID. Media identities, search, pagination, and upstream processing are shared. No user accounts, unique manifests, or server-side language preferences are created. Nuvio may treat each URL as a separate installation: remove the old variant when switching to avoid duplicates. Nuvio or a separate metadata provider may override titles shown on detail pages; AniBloom controls its catalog responses, not Nuvio's application language.
 
 
 ## Personal deployment setup
@@ -209,7 +217,7 @@ If AniBloom is useful to you, you can support its ongoing maintenance and hostin
 AniBloom is a JavaScript serverless addon deployed on Vercel.
 
 - **Production:** `v2.16.0`
-- **Development:** `v2.16.0`
+- **Development:** `v2.17.0`
 
 Run the automated test suite:
 

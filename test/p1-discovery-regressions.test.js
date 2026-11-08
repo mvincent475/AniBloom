@@ -28,10 +28,10 @@ test("seasonal catalogs support bounded optional genre extras without changing r
     assert.ok(genre.options.includes("Action"));
     assert.ok(genre.options.includes("Sci-Fi"));
     assert.equal(new Set(genre.options).size, genre.options.length);
-    assert.deepEqual(catalog.extra.filter(e => e.name !== "genre").map(e => e.name), ["search", "skip"]);
+    assert.deepEqual(catalog.extra.filter(e => e.name !== "genre").map(e => e.name), ["search", "skip", "artwork"]);
   }
   for (const catalog of catalogs.filter(c => !c.id.includes("season"))) {
-    assert.deepEqual(catalog.extra.map(e => e.name), ["search", "skip"]);
+    assert.deepEqual(catalog.extra.map(e => e.name), ["search", "skip", "artwork"]);
   }
 });
 
@@ -75,11 +75,11 @@ test("search handles punctuation, accents, non-Latin titles and AniList synonyms
 });
 
 test("upcoming day and 7-day windows preserve strict boundaries and rolling freshness", () => {
-  const now = new Date("2026-11-08T15:00:00.000Z"); // 23:00 Asia/Manila
+  const now = new Date("2026-11-08T14:00:00.000Z"); // 23:00 Asia/Tokyo
   const today = getRollingCatalogRange("airing_today", now);
   assert.deepEqual(today, {
     start: now.getTime(),
-    end: Date.parse("2026-11-08T16:00:00.000Z"),
+    end: Date.parse("2026-11-08T15:00:00.000Z"),
   });
   const week = getRollingCatalogRange("upcoming_7_days", now);
   assert.deepEqual(week, { start: now.getTime(), end: now.getTime() + 7 * 24 * 60 * 60 * 1000 });
@@ -90,7 +90,7 @@ test("upcoming day and 7-day windows preserve strict boundaries and rolling fres
   for (const id of ["airing_today", "upcoming_7_days"]) {
     const entry = catalogs.find(c => c.id === id);
     assert.equal(entry?.type, "series");
-    assert.deepEqual(entry.extra.map(e => e.name), ["search", "skip"]);
+    assert.deepEqual(entry.extra.map(e => e.name), ["search", "skip", "artwork"]);
   }
 });
 
