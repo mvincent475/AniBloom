@@ -69,3 +69,42 @@ test("copied GitHub automation remains opt-in and targets this repository", asyn
   assert.equal(JSON.parse(vercel).git?.deploymentEnabled, false,
     "Git-based deployment must stay disabled until CI deployment gating is designed");
 });
+
+test("personal extended manifests remain opt-in across title variants and Vercel routes", async () => {
+  const { default: manifestHandler } = await import("../api/resolver-manifest.js");
+  const { ADDON_VERSION } = await import("../api/version.js");
+  const { rewrites } = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
+  const standardIds = [
+    "upcoming_season", "current_season", "previous_season",
+    "upcoming_season_movies", "current_season_movies", "previous_season_movies",
+    "upcoming_3_days", "previous_3_days",
+  ];
+
+  for (const prefix of ["", "/romaji", "/native"]) {
+    for (const extended of [false, true]) {
+      const path = prefix + (extended ? "/extended" : "") + "/manifest.json";
+      let manifest;
+      manifestHandler({ method: "GET", url: path, query: {} }, {
+        status(code) { assert.equal(code, 200); return this; },
+        setHeader() {},
+        json(payload) { manifest = payload; return payload; },
+      });
+
+      assert.equal(manifest.version, ADDON_VERSION, path);
+      assert.equal(manifest.logo, BASE_URL + "/assets/anibloom-icon.png", path);
+      assert.deepEqual(manifest.catalogs.slice(0, 8).map(item => item.id), standardIds, path);
+      assert.deepEqual(
+        manifest.catalogs.slice(8).map(item => item.id),
+        extended ? ["airing_today", "upcoming_7_days"] : [],
+        path,
+      );
+
+      const rewrite = rewrites.find(item => item.source === path);
+      assert.ok(rewrite, "Missing Vercel rewrite for " + path);
+      const destination = new URL(rewrite.destination, BASE_URL);
+      assert.equal(destination.pathname, "/api/resolver-manifest", path);
+      assert.equal(destination.searchParams.get("titleMode"), prefix ? prefix.slice(1) : null, path);
+      assert.equal(destination.searchParams.get("extended"), extended ? "1" : null, path);
+    }
+  }
+});
