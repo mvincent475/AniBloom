@@ -126,11 +126,32 @@ export async function validateLogoAsset(baseUrl, logoUrl, fetchImpl = fetch) {
   return true;
 }
 
-export async function validateProduction(baseUrl, expectedVersion, fetchImpl = fetch, { allowLegacy = false } = {}) {
+const MAX_PRODUCTION_MANIFEST_READS = 8;
+const DEFAULT_MANIFEST_RETRY_DELAY_MS = 1500;
+
+export async function validateProduction(
+  baseUrl,
+  expectedVersion,
+  fetchImpl = fetch,
+  { allowLegacy = false, manifestRetryDelayMs = DEFAULT_MANIFEST_RETRY_DELAY_MS } = {},
+) {
   const base = String(baseUrl).replace(/\/$/, "");
-  const manifestResponse = await fetchImpl(`${base}/manifest.json`);
-  if (!manifestResponse.ok) throw new Error(`Manifest request failed: HTTP ${manifestResponse.status}`);
-  const manifest = await manifestResponse.json();
+  // Vercel edge locations may briefly serve the previous release after the
+  // first production smoke check passes. Retry only the inexpensive manifest
+  // version check; never duplicate the exhaustive catalog crawl.
+  const delayMs = Number.isFinite(manifestRetryDelayMs)
+    ? Math.max(0, manifestRetryDelayMs)
+    : DEFAULT_MANIFEST_RETRY_DELAY_MS;
+  let manifest;
+  for (let attempt = 0; attempt < MAX_PRODUCTION_MANIFEST_READS; attempt++) {
+    const manifestResponse = await fetchImpl(`${base}/manifest.json`);
+    if (!manifestResponse.ok) throw new Error(`Manifest request failed: HTTP ${manifestResponse.status}`);
+    manifest = await manifestResponse.json();
+    if (manifest?.version === expectedVersion || !manifest || typeof manifest !== "object") break;
+    if (attempt + 1 < MAX_PRODUCTION_MANIFEST_READS) {
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+  }
   validateManifest(manifest, expectedVersion, { allowLegacy });
   if (!manifest.logo) throw new Error("Manifest logo URL is required.");
   await validateLogoAsset(base, manifest.logo, fetchImpl);

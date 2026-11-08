@@ -141,3 +141,66 @@ test("retired catalog ids are never included in the default production validator
   assert.ok(!PRODUCTION_CATALOG_IDS.includes("upcoming_7_days"));
   assert.equal(PRODUCTION_CATALOG_IDS.at(-1), "top_season");
 });
+
+
+test("production validation retries briefly stale manifest versions after a deployment", async () => {
+  const ids = [
+    "upcoming_season", "current_season", "previous_season",
+    "upcoming_season_movies", "current_season_movies", "previous_season_movies",
+    "upcoming_3_days", "previous_3_days", "top_season",
+  ];
+  const manifest = {
+    id: "com.marki.nuvio.anime-releases",
+    version: "2.19.0",
+    logo: "https://example.test/assets/anibloom-icon.png",
+    identityMode: "provider",
+    resources: [{ name: "catalog", types: ["series", "movie"] }],
+    types: ["series", "movie"],
+    catalogs: ids.map(id => ({ id, type: id.endsWith("_movies") ? "movie" : "series", pageSize: 50 })),
+  };
+  const png = new Uint8Array(24);
+  png.set([137, 80, 78, 71, 13, 10, 26, 10]);
+  new DataView(png.buffer).setUint32(16, 192);
+  new DataView(png.buffer).setUint32(20, 192);
+  let manifestReads = 0;
+  const fetchedPaths = [];
+  const stubFetch = async (url) => {
+    const pathname = new URL(url).pathname;
+    fetchedPaths.push(pathname);
+    if (pathname === "/manifest.json") {
+      manifestReads += 1;
+      return new Response(JSON.stringify({
+        ...manifest,
+        version: manifestReads === 1 ? "2.18.0" : "2.19.0",
+      }), { status: 200 });
+    }
+    if (pathname === "/assets/anibloom-icon.png") {
+      return new Response(png, { status: 200, headers: { "content-type": "image/png" } });
+    }
+    if (pathname.startsWith("/meta/")) return new Response("{}", { status: 404 });
+    if (pathname.startsWith("/catalog/")) {
+      const metas = pathname.endsWith("/current_season.json")
+        ? [{ id: "mal:5114", type: "series" }] : [];
+      return new Response(JSON.stringify({ metas }), { status: 200 });
+    }
+    throw new Error("Unexpected production validation request: " + pathname);
+  };
+  assert.equal(await validateProduction("https://example.test", "2.19.0", stubFetch, {
+    manifestRetryDelayMs: 0,
+  }), true);
+  assert.equal(manifestReads, 2);
+  assert.equal(fetchedPaths.filter(path => path === "/catalog/series/current_season.json").length, 1,
+    "a temporarily stale manifest must not duplicate catalog validation requests");
+});
+
+test("production validation fails closed when the manifest remains at an older version", async () => {
+  let manifestReads = 0;
+  const fetchStub = async () => {
+    manifestReads += 1;
+    return new Response(JSON.stringify({ version: "2.18.0" }), { status: 200 });
+  };
+  await assert.rejects(validateProduction("https://example.test", "2.19.0", fetchStub, {
+    manifestRetryDelayMs: 0,
+  }), /Manifest version 2[.]18[.]0 does not match expected 2[.]19[.]0/);
+  assert.ok(manifestReads >= 2 && manifestReads <= 12, "manifest retry budget must be finite");
+});
