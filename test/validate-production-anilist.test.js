@@ -201,6 +201,6 @@ test("production validation fails closed when the manifest remains at an older v
   };
   await assert.rejects(validateProduction("https://example.test", "2.19.0", fetchStub, {
     manifestRetryDelayMs: 0,
-  }), /Manifest version 2\\.18\\.0 does not match expected 2\\.19\\.0/);
+  }), /Manifest version 2[.]18[.]0 does not match expected 2[.]19[.]0/);
   assert.ok(manifestReads >= 2 && manifestReads <= 12, "manifest retry budget must be finite");
 });
