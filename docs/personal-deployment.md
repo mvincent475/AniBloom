@@ -41,6 +41,29 @@ On the first actual personal release, the workflow must create a genuine persona
 
 **Automatic updates are not enabled by this reconciliation PR.** A dedicated GitHub App installed on `mvincent475/AniBloom` must be configured with minimally necessary Contents and Pull requests access. Set `AUTOMATION_APP_CLIENT_ID` as a GitHub repository variable and `AUTOMATION_APP_PRIVATE_KEY` as an Actions secret. After verification, set `PERSONAL_VERSION_AUTOMATION_ENABLED=true` to create patch-version PRs. Controlled production releases additionally require a deploy hook targeting the **personal** Vercel project and `main` branch, stored as secret `VERCEL_DEPLOY_HOOK_URL`, and an independently enabled `PERSONAL_RELEASES_ENABLED=true` flag. Do not reuse upstream credentials or hooks. The next release baseline is `2.16.0`; automated patch-version PRs do not, by themselves, tag or deploy it.
 
+## Controlled commit-message releases
+
+For AniBloom Personal, merge a reviewed pull request into protected `main` with
+`[deploy-prod]` in the **merge commit message** to request a production release.
+Do not push directly to `main`, reuse upstream credentials, or create a release
+tag before production verification. The commit-message trigger is distinct
+from the separate `PERSONAL_VERSION_AUTOMATION_ENABLED` variable.
+
+The release job runs only when `PERSONAL_RELEASES_ENABLED=true`. It validates
+locked dependencies, the full test suite, release metadata, the deployment
+checkpoint, and the exact current `main` SHA. The deployment hook is restricted
+to the personal Vercel project. Only then may it deploy. Normal main CI can be
+skipped for a `[deploy-prod]` commit because the controlled release job runs its
+own full test suite; PR checks must pass **before** the merge.
+
+After a successful deployment, verify the production manifest, standard and
+extended manifest variants, catalog responses, GitHub release tag, and
+`ops/release-state.json`. The release workflow opens a separate release-state
+pull request, which must pass required checks and be merged before the recorded
+release state is considered synchronized. If deployment succeeded but release
+finalization failed, investigate the actual Vercel deployment before using a
+`[finalize-prod:<40-character-sha>]` recovery commit; do not blindly redeploy.
+
 ## Acceptance checks
 
 After a separately approved, CI-green production release, request these unauthenticated URLs and verify both HTTP 200 and content identity:
