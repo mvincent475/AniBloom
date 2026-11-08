@@ -118,7 +118,8 @@ test("home page uses only canonical unversioned catalog URLs", async () => {
   assert.doesNotMatch(source, /\/v5\//);
   assert.doesNotMatch(source, /v5 resolver/i);
   assert.match(source, /const type = id\.endsWith\("_movies"\) \? "movie" : "series";/);
-  assert.match(source, /const url = `\$\{BASE_URL\}\/catalog\/\$\{type\}\/\$\{id\}\.json`;/);
+  assert.match(source, /const url = `\$\{BASE_URL\}\$\{routePrefix\}\/catalog\/\$\{type\}\/\$\{id\}\.json`;/);
+  assert.match(source, /routePrefix: "\/extended"/, "optional catalog links must use the fixed extended route prefix");
 });
 
 
@@ -243,7 +244,7 @@ test("last deployment metadata must mirror the authoritative release state", () 
       tag: "v5.5.0",
       releasedAt: "2026-10-01T00:00:00.000Z",
       ciRunId: "12345",
-      ciRunUrl: "https://github.com/AniBloomHQ/AniBloom/actions/runs/12345",
+      ciRunUrl: "https://github.com/mvincent475/AniBloom/actions/runs/12345",
       smokeTest: "passed",
     },
   };
