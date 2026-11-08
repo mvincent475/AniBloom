@@ -71,7 +71,7 @@ test("copied GitHub automation remains opt-in and targets this repository", asyn
     "Git-based deployment must stay disabled until CI deployment gating is designed");
 });
 
-test("personal standard and extended manifest aliases retain all eleven catalog IDs across title variants", async () => {
+test("personal standard and extended manifest aliases retain all nine catalog IDs across title variants", async () => {
   const { default: manifestHandler } = await import("../api/resolver-manifest.js");
   const { ADDON_VERSION } = await import("../api/version.js");
   const { rewrites } = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
@@ -96,7 +96,7 @@ test("personal standard and extended manifest aliases retain all eleven catalog 
       assert.deepEqual(manifest.catalogs.slice(0, 8).map(item => item.id), standardIds, path);
       assert.deepEqual(
         manifest.catalogs.slice(8).map(item => item.id),
-        ["airing_today", "upcoming_7_days", "top_season"],
+        ["top_season"],
         path,
       );
 
@@ -110,7 +110,7 @@ test("personal standard and extended manifest aliases retain all eleven catalog 
   }
 });
 
-test("personal ranked aliases expose eleven catalog IDs without default artwork filters", async () => {
+test("personal ranked aliases expose nine catalog IDs without default artwork filters", async () => {
   const { default: manifestHandler } = await import("../api/resolver-manifest.js");
   const { ADDON_VERSION } = await import("../api/version.js");
   const { rewrites } = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
@@ -125,10 +125,9 @@ test("personal ranked aliases expose eleven catalog IDs without default artwork 
       });
       assert.equal(result.version, ADDON_VERSION, path);
       assert.equal(result.logo, BASE_URL + "/assets/anibloom-icon.png", path);
-      assert.equal(result.catalogs.length, 11, path);
+      assert.equal(result.catalogs.length, 9, path);
       assert.equal(result.catalogs.at(-1).id, "top_season", path);
-      assert.deepEqual(result.catalogs.slice(8, -1).map(c => c.id),
-        ["airing_today", "upcoming_7_days"], path);
+      assert.deepEqual(result.catalogs.slice(8, -1).map(c => c.id), [], path);
       assert.equal(result.catalogs[0].extra.some(x => x.name === "artwork"), false, path);
       const rewrite = rewrites.find(r => r.source === path);
       assert.ok(rewrite, "Missing Vercel rewrite for " + path);
@@ -147,7 +146,7 @@ test("personal default manifest and poster provider aliases retain isolated rout
   const expected = [
     "upcoming_season", "current_season", "previous_season",
     "upcoming_season_movies", "current_season_movies", "previous_season_movies",
-    "upcoming_3_days", "previous_3_days", "airing_today", "upcoming_7_days", "top_season",
+    "upcoming_3_days", "previous_3_days", "top_season",
   ];
   for (const prefix of ["", "/romaji", "/native"]) {
     for (const route of ["/manifest.json", "/betterposters/manifest.json", "/postersplus/manifest.json"]) {
