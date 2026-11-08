@@ -196,7 +196,7 @@ test("release state rejects inconsistent production and development metadata", (
   }), true);
 });
 
-test("production manifest validator enforces the eight-catalog movie/series contract", () => {
+test("production manifest validator enforces the canonical eleven-catalog movie/series contract", () => {
   const manifest = {
     id: "com.marki.nuvio.anime-releases",
     version: "5.5.3",
@@ -205,11 +205,12 @@ test("production manifest validator enforces the eight-catalog movie/series cont
     types: ["series", "movie"],
     catalogs: PRODUCTION_CATALOG_IDS.map((id) => ({ id, type: id.endsWith("_movies") ? "movie" : "series" })),
   };
+  assert.equal(PRODUCTION_CATALOG_IDS.length, 11);
   assert.equal(validateManifest(manifest, "5.5.3"), true);
   assert.throws(() => validateManifest({
     ...manifest,
     catalogs: manifest.catalogs.slice(0, 7),
-  }, "5.5.3"), /eight supported catalogs/);
+  }, "5.5.3"), /supported catalog contract/);
 });
 
 test("production rolling catalog validators enforce their distinct metadata contracts", () => {
