@@ -31,6 +31,7 @@ test("load probe accepts only personal production and preview targets", () => {
 test("no first-party text source refers to the original production host", async () => {
   const root = fileURLToPath(new URL("../", import.meta.url));
   const originalHost = ["anibloom", "vercel", "app"].join(".");
+  const escapedOriginalHost = ["anibloom", "\\.", "vercel", "\\.", "app"].join("");
   const textExtensions = new Set([".js", ".mjs", ".json", ".yml", ".yaml", ".md", ".txt", ".html", ".css", ".svg"]);
   const exclude = new Set(["node_modules", ".git", ".vercel"]);
   const bad = [];
@@ -41,7 +42,7 @@ test("no first-party text source refers to the original production host", async 
       if (item.isDirectory()) await walk(path);
       else if (item.isFile() && textExtensions.has(extname(item.name))) {
         const contents = await readFile(path, "utf8");
-        if (contents.includes(originalHost)) bad.push(path.slice(root.length));
+        if (contents.includes(originalHost) || contents.includes(escapedOriginalHost)) bad.push(path.slice(root.length));
       }
     }
   }
