@@ -66,7 +66,7 @@ test("catalog definitions preserve the supported catalogs with one consistent Nu
 
   assert.deepEqual(
     definitions.map(({ id }) => id),
-    ["upcoming_season", "current_season", "previous_season", "upcoming_season_movies", "current_season_movies", "previous_season_movies", "upcoming_3_days", "previous_3_days"],
+    ["upcoming_season", "current_season", "previous_season", "upcoming_season_movies", "current_season_movies", "previous_season_movies", "upcoming_3_days", "previous_3_days", "airing_today", "upcoming_7_days", "top_season"],
   );
   assert.equal(new Set(definitions.map(({ id }) => id)).size, definitions.length);
 
@@ -74,7 +74,7 @@ test("catalog definitions preserve the supported catalogs with one consistent Nu
     assert.equal(definition.type, definition.id.endsWith("_movies") ? "movie" : "series");
     assert.equal(definition.pageSize, NUVIO_PAGE_SIZE);
     assert.deepEqual(definition.extra.map(({ name }) => name),
-      definition.id.includes("season") ? ["search", "skip", "artwork", "genre"] : ["search", "skip", "artwork"]);
+      definition.id.includes("season") ? ["search", "skip", "genre"] : ["search", "skip"]);
   }
   assert.equal(ANILIST_PAGE_SIZE, NUVIO_PAGE_SIZE);
 });

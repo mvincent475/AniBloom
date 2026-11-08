@@ -20,7 +20,7 @@ const seasons = {
 test("seasonal catalogs support bounded optional genre extras without changing rolling contracts", () => {
   const catalogs = catalogDefinitions(seasons);
   const seasonals = catalogs.filter(c => c.id.includes("season"));
-  assert.equal(seasonals.length, 6);
+  assert.equal(seasonals.length, 7);
   for (const catalog of seasonals) {
     const genre = catalog.extra.find(e => e.name === "genre");
     assert.ok(genre, catalog.id);
@@ -28,10 +28,10 @@ test("seasonal catalogs support bounded optional genre extras without changing r
     assert.ok(genre.options.includes("Action"));
     assert.ok(genre.options.includes("Sci-Fi"));
     assert.equal(new Set(genre.options).size, genre.options.length);
-    assert.deepEqual(catalog.extra.filter(e => e.name !== "genre").map(e => e.name), ["search", "skip", "artwork"]);
+    assert.deepEqual(catalog.extra.filter(e => e.name !== "genre").map(e => e.name), ["search", "skip"]);
   }
   for (const catalog of catalogs.filter(c => !c.id.includes("season"))) {
-    assert.deepEqual(catalog.extra.map(e => e.name), ["search", "skip", "artwork"]);
+    assert.deepEqual(catalog.extra.map(e => e.name), ["search", "skip"]);
   }
 });
 
@@ -90,7 +90,7 @@ test("upcoming day and 7-day windows preserve strict boundaries and rolling fres
   for (const id of ["airing_today", "upcoming_7_days"]) {
     const entry = catalogs.find(c => c.id === id);
     assert.equal(entry?.type, "series");
-    assert.deepEqual(entry.extra.map(e => e.name), ["search", "skip", "artwork"]);
+    assert.deepEqual(entry.extra.map(e => e.name), ["search", "skip"]);
   }
 });
 
@@ -121,7 +121,7 @@ test("identity fallback never fabricates a provider ID and keeps distinct AniLis
   assert.equal(toCatalogIdentity({ extra: { malId: -1, anilistId: -1 } }), null);
 });
 
-test("local server routes extended English/Romaji/Native manifests without changing standard installs", async () => {
+test("local server retains extended English/Romaji/Native manifest aliases with the full catalog set", async () => {
   const { createPreviewServer } = await import("../scripts/dev-server.js");
   const server = createPreviewServer();
   await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -132,9 +132,8 @@ test("local server routes extended English/Romaji/Native manifests without chang
       const extendedResponse = await fetch(origin + prefix + "/extended/manifest.json");
       assert.equal(extendedResponse.status, 200);
       const extended = await extendedResponse.json();
-      assert.equal(standard.catalogs.length, 8);
-      assert.equal(extended.catalogs.length, 10);
-      assert.deepEqual(extended.catalogs.slice(0, 8).map(x => x.id), standard.catalogs.map(x => x.id));
+      assert.equal(standard.catalogs.length, 11);
+      assert.deepEqual(extended.catalogs, standard.catalogs);
     }
     const bad = await fetch(origin + "/extended/catalog/series/upcoming_7_days.json?skip=1001");
     assert.equal(bad.status, 400);
