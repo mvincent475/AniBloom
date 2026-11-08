@@ -1,23 +1,23 @@
 {
   "deploymentLimit": 10,
-  "deploymentsSincePause": 2,
-  "totalDeployments": 2,
+  "deploymentsSincePause": 3,
+  "totalDeployments": 3,
   "paused": false,
-  "lastDeploymentSha": "1dff6bb2f32917bad3b34cfee81c6cc7a31f54a3",
-  "lastDeploymentId": "dpl_9Pn9Q2jFBkcjPxgkUZKGhCtYHxAm",
-  "lastDeploymentVersion": "2.15.0",
-  "nextReleaseVersion": "2.16.0",
-  "lastDeploymentTag": null,
+  "lastDeploymentSha": "618204a64ecdf74050af540ff199e39a6abd4fbc",
+  "lastDeploymentId": "dpl_3s97nr1uj7tv4CazXCVtwDf621xq",
+  "lastDeploymentVersion": "2.16.0",
+  "nextReleaseVersion": "2.17.0",
+  "lastDeploymentTag": "v2.16.0",
   "lastDeployment": {
-    "version": "2.15.0",
-    "sha": "1dff6bb2f32917bad3b34cfee81c6cc7a31f54a3",
-    "vercelDeploymentId": "dpl_9Pn9Q2jFBkcjPxgkUZKGhCtYHxAm",
-    "tag": null,
-    "releasedAt": null,
-    "ciRunId": null,
-    "ciRunUrl": null,
+    "version": "2.16.0",
+    "sha": "618204a64ecdf74050af540ff199e39a6abd4fbc",
+    "vercelDeploymentId": "dpl_3s97nr1uj7tv4CazXCVtwDf621xq",
+    "tag": "v2.16.0",
+    "releasedAt": "2026-11-08T13:23:19.805036Z",
+    "ciRunId": "42484452250",
+    "ciRunUrl": "https://github.com/mvincent475/AniBloom/actions/runs/42484452250",
     "smokeTest": "passed"
   },
   "supersededReleaseVersions": [],
-  "releaseHistoryStarted": false
+  "releaseHistoryStarted": true
 }
