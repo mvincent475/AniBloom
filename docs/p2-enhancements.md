@@ -1,47 +1,54 @@
-# P2 discovery, artwork and cost safeguards
+# Unified catalogs, ranked discovery, and artwork setup
 
-> **AniBloom Personal release tracking:** These optional features are implemented in the v2.17.0 codebase. Check `ops/release-state.json` for the verified personal production release and deployment. The upstream project's deployment status and CPU budget are independent.
+> **AniBloom Personal release tracking:** These unified catalog and BetterPosters features are integrated into the v2.18.0 personal codebase. The verified production version and deployment are recorded in `ops/release-state.json`; a source merge alone is not a production release. The upstream project's deployment status and resource limits are independent.
 
-## Ranked seasonal discovery (explicit opt-in)
+## 1. All 11 catalogs in the default manifest
 
-- A new `top_season` series catalog uses the **current Japanese anime season** (`Asia/Tokyo`).
-- AniList filters by season/year, `isAdult:false`, and `TV/TV_SHORT/ONA/OVA/SPECIAL`. Its upstream sort is `POPULARITY_DESC, SCORE_DESC, ID`, so pagination retains full-upstream popularity ordering; it **does not** rank the first page of the old `current_season` catalog in application memory.
-- The ranking represents **AniList list popularity**, not an editorial quality score; `SCORE_DESC` only breaks ties. It is not a guarantee of anime quality.
-- The optional ranked manifest is `/ranked/manifest.json` (9 catalogs), with `/extended/ranked/manifest.json` (11 catalogs). English, `/romaji`, and `/native` variants preserve title names and provider identities. The default remains **8** catalogs and the non-ranked extended manifest remains **10**.
-- Each page requests exactly one AniList 50-item season-page query before canonical identity handling. Provider mapping can still exclude a record, so a Nuvio page can return fewer than 50 items; we do not overfetch for page fill.
-- By design, `top_season` is reachable via ranked routes or `ranked=1` in internal rewrite, not advertised to users who do not opt in.
+The canonical `/manifest.json` (and the Romaji and Native variants) advertises **all eleven** catalog IDs in this order: `upcoming_season`, `current_season`, `previous_season`, `upcoming_season_movies`, `current_season_movies`, `previous_season_movies`, `upcoming_3_days`, `previous_3_days`, `airing_today`, `upcoming_7_days`, and `top_season`.
 
-## Optional poster URLs (per-catalog extras)
+The previous `/extended` and `/ranked` paths, including combined and language-prefixed paths, remain functional **aliases** yielding identical 11-catalog manifests. They should not be installed alongside the canonical manifest because Nuvio may display duplicate addon rows. Old installations may need a manifest refresh or remove/reinstall after deployment.
 
-The `artwork` catalog extra contains `AniList`, `BetterPosters`, and `PostersPlus`. Omitting the extra (normal installation) leaves AniList's highest-available `extraLarge → large → medium` cover unchanged.
+For visibility control, use Nuvio Web **Settings → Home** (per-catalog show/hide and reorder) or the equivalent **Catalog Customization / Reorder Home Catalogs** on supported Nuvio TV/mobile builds. These settings can affect catalog availability beyond the Home screen on some clients, and a manifest containing additional catalog IDs may cause extra startup requests before users disable rows. Disabling Home rows is **not** a guarantee of zero external requests in all clients. Primary references: [Nuvio Web Home settings](https://orochibraru.com/nuvio-web/docs/profiles-and-settings) and [Nuvio TV catalog controls / platform caveat](https://github.com/NuvioMedia/NuvioTV/issues/3478).
 
-| Selection | Behavior | Fallback |
+Top Season uses the current Japanese calendar season (`Asia/Tokyo`) and upstream AniList sorting `POPULARITY_DESC, SCORE_DESC, ID`. That is *AniList list popularity*, not editorial quality. It requests exactly one 50-item AniList season page before existing provider-identity processing. Airing Today ends at Japan's next midnight; Upcoming 7 Days covers a rolling 168 hours and retains the existing eight-page schedule query cap. Normalized catalog response keys remain partitioned by catalog ID/season/search/genre. Fetch limits, stale caches, shared AniList budgets, and safety guards remain in place.
+
+## 2. BetterPosters: automatic catalog artwork
+
+**No BetterPosters configuration is required in AniBloom or Nuvio.** The normal canonical manifest is the sole recommended installation path; users only choose their desired *catalog title preference* (English/Romaji/Native).
+
+| Catalog title preference | Canonical manifest | BetterPosters poster text |
 | --- | --- | --- |
-| AniList | Existing AniList poster; no new image endpoint | Existing cover selection logic |
-| BetterPosters | `https://btttr.cc/poster/imdb/poster-default/ttNNN.jpg` for a resolved final **IMDb catalog ID** only | Original AniList when the catalog id is not IMDb |
-| PostersPlus | `https://<configured-public-host>/poster?anilist_id=NNN&type=series\|movie` for a valid canonical AniList id | Original AniList when no valid id or no validated configured host |
+| English | `/manifest.json` | English (default; no `lang` parameter) |
+| Romaji | `/romaji/manifest.json` | English (default; no `lang` parameter) |
+| Native | `/native/manifest.json` | Japanese (`?lang=ja`) |
 
-These URLs are directly loaded by the Nuvio client. AniBloom makes **zero new HTTP calls**, does not proxy poster bytes, and never passes credentials/keys to client URLs. The preference is projected on the already-cached normalized catalog results, after identity resolution and title preference. No cache key, request budget or Redis dimension multiplication is needed for artwork choices.
+For an eligible IMDb title (`tt` followed by 7–12 digits), AniBloom constructs direct client-side URLs such as `https://btttr.cc/poster/imdb/poster-default/tt1234567.jpg`. Native catalog URLs append `?lang=ja`. AniBloom **does not call the provider or proxy the image**; Nuvio loads it from BetterPosters itself.
 
-**Operator setup for PostersPlus:** Set the **public non-secret** environment variable `POSTERSPLUS_PUBLIC_BASE_URL` to the bare HTTPS origin of a PostersPlus service that explicitly permits these client requests; e.g. `https://posters.example.org` is a placeholder, not a preconfigured live host. The value must have no username, password, port, path, query or fragment. Never put a service `access_key`, TMDB/MDBList key, private internal hostname or credential into that variable. Providers needing URL credentials are **not supported** by this direct-client integration. There is no default public PostersPlus host or assumption that someone else's instance is free/unlimited.
+We confirmed the provider URL-builder contract against [BetterPosters' published source and unit tests](https://github.com/neurekadev/better-posters/blob/master/BetterPosters/BetterPosterUrlBuilder.cs). Its standard visual options are:
 
-If an external image URL later returns 404, is rate-limited or offline, AniBloom cannot detect it after delivering catalog JSON; client/metadata-provider image fallback determines what appears. This is intentionally *not* represented as automatic AniList fallback on image load failure. Media detail-page artwork may differ from AniBloom's catalog poster because metadata addons can override it.
+| Option | Default |
+| --- | --- |
+| Trend tags | On |
+| Genre label | On |
+| Rating label | On |
+| Rating source | Average |
+| Quality tags | Off |
+| Age-rating tags | Off |
+| Language | English for English/Romaji; Japanese for Native |
 
-**Nuvio compatibility:** The addon advertises an ordinary optional catalog `artwork` extra with enumerated values. Some Nuvio versions may not offer arbitrary extras through their catalog UI. Explicit catalog URLs containing `artwork=BetterPosters` or `artwork=PostersPlus` work at the API level; actual Nuvio UI selection and image behavior remain to be live-tested after deployment.
+The URL builder retains the provider's known switch combinations for future code-level use: toggling genre/rating selects `poster`, `poster-r`, `poster-g`, or `poster-n`; quality tags append `q`; age rating appends `a`; disabling trend tags sets `tag=none`; a supported specific rating source uses `rs=...`. These are **not** configurable from the AniBloom homepage. Only the poster language follows the selected manifest language automatically.
 
-Primary provider references: [AniList media query and sort](https://github.com/AniList/docs/blob/master/docs/guide/graphql/queries/media.md), [BetterPosters Nuvio proxy's documented direct URL](https://github.com/StrayBer/nuvio-better-posters-addon), [PostersPlus anime-ID direct URL](https://github.com/UmbraProjects/PostersPlus/blob/dev/URL_REFERENCE.md).
+### Identity, fallback, and backward compatibility
 
-## Performance, budget and operational decision
+- Only finalized **IMDb-format catalog IDs** use BetterPosters; other IDs (MAL, AniList, TMDB, etc.) keep their original AniList `extraLarge → large → medium` cover, so cached canonical identities are not altered or guessed.
+- A correctly formed BetterPosters URL is **not** guaranteed to resolve to an existing image. If the external service responds with 404, blocks or rate-limits a client, AniBloom cannot substitute the original image after returning its catalog JSON; Nuvio or a separately installed metadata addon controls on-device fallback and detail-page posters.
+- Existing explicit provider-specific manifest paths and `artwork` query parameters remain accepted as compatibility interfaces to avoid breaking current installations, but the UI and canonical manifest **do not advertise provider setup or a per-catalog artwork selector**. For new users, no extra configuration is required.
+- No credentials, cookies, private addon manifests, API keys, arbitrary custom hostnames or per-user state are supplied to BetterPosters; images are loaded directly by the Nuvio client.
 
-| Work | Unchanged default traffic | Incremental traffic when explicitly opted in |
-| --- | --- | --- |
-| Top Season | No new catalog query | One extra **AniList GraphQL page per cache miss/page**, plus standard provider identity resolution; cache uses the new catalog id |
-| Artwork variants | No additional AniList queries, no server image request | External client-to-provider image fetches; costs/limits belong to image provider; response cache is reused |
-| Existing extended airing feeds | Still only opt-in | Existing maximum eight airing schedule pages per request, unchanged by P2 |
-| Production monitoring | None added | None added |
+## 3. Performance and release policy
 
-No new npm dependencies, background jobs, scheduled health probes or application-level telemetry are introduced. The old 30-minute production availability workflow remains removed.
+Default manifest expansion from eight to eleven IDs is a deliberate product change: it **does not perform all eleven upstream requests merely to render the HTML homepage or manifest**, but Nuvio may request newly advertised rows immediately. This can increase total AniList queries, mapping work, Vercel CPU and error rate, including `ANILIST_RATE_LIMIT_BUDGET`. Turning off unwanted rows may mitigate traffic but is client-dependent. The two rolling schedules still have a bounded eight-page cap, `top_season` one AniList page per request, with existing shared cache and limiter. Automatic BetterPosters projection does not add server-side upstream requests.
 
-The test suite includes isolated offline validations of page fan-out, upstream ranking variables, opt-in manifest counts, cache dimension isolation and poster URL/credential validation. **These are budget invariants, not claims of measured production CPU savings.** Exact Vercel CPU, Redis usage, AniList 429 frequency and Nuvio compatibility must be evaluated using existing Vercel/Upstash signals after deployment. Prior production errors include `ANILIST_RATE_LIMIT_BUDGET`, so refrain from expanding default catalogs before measuring real use.
+No new dependencies, cron jobs, production probes, telemetry or paid services. Performance/cost validation comprises offline regression tests of page bounds and cache isolation; **real production CPU savings or Nuvio startup traffic are not measured**. Keep observability #511 deferred; do not reinstate scheduled production monitoring to validate this change. After a user-authorized release, verify default/legacy manifests, per-row client toggles, provider poster requests, and request budgets before revising resource policy.
 
-P2 observability remains **deferred** under #511 pending justified traffic, cost and privacy analysis. Do not reinstate scheduled production polling or publish user-level request fields. After the relevant personal release is verified, measure one representative old page, one ranked page, a cache hit, a stale response and a provider image selection, and compare before enabling additional defaults.
+For AniBloom Personal, release metadata is updated only after the verified controlled production release and smoke tests. Use `ops/release-state.json` as the authoritative deployment record. Deployments are gated by the protected GitHub Actions workflow and personal project credentials.

@@ -217,12 +217,17 @@ export default {
   const parts = url.pathname.split("/").filter(Boolean);
   const prefixed = parts[0] === "romaji" || parts[0] === "native";
   let offset = prefixed ? 1 : 0;
-  while (parts[offset] === "extended" || parts[offset] === "ranked") offset++;
+  while (["extended", "ranked", "betterposters", "postersplus"].includes(parts[offset])) offset++;
   const queryParams = Object.fromEntries(url.searchParams.entries());
   const titlePreference = normalizeTitlePreference(prefixed ? parts[0] : queryParams.titleMode);
   const rawExtraPath = queryParams.extra ?? parts.slice(offset + 3).join("/");
   const pathExtra = parseCatalogExtraPath(rawExtraPath);
+  // Fixed artwork manifest prefixes allow Nuvio clients without arbitrary
+  // catalog-extra controls to select posters at install time.
+  const providerVariant = parts.includes("betterposters") ? "BetterPosters"
+    : parts.includes("postersplus") ? "PostersPlus" : "";
   const query = { ...pathExtra, ...queryParams };
+  if (providerVariant && query.artwork == null) query.artwork = providerVariant;
   const resource = query.resource || parts[offset];
   const type = query.type || parts[offset + 1];
   const rawId = query.id || parts[offset + 2]?.replace(/\.json$/, "");
@@ -247,9 +252,7 @@ export default {
 
   if (resource === "catalog" && ["series", "movie", "anime"].includes(String(type || "").toLowerCase())) {
     const requestedType = String(type || "").toLowerCase();
-    const ranked = parts.includes("ranked") || query.ranked === "1";
-    const definition = catalogDefinitions(seasonInfo, "english", { includeExtended: true, includeTop: ranked })
-      .find((catalog) => catalog.id === id);
+    const definition = catalogDefinitions(seasonInfo, "english").find((catalog) => catalog.id === id);
     if (!definition || (requestedType === "anime" ? definition.type !== "series" : definition.type !== requestedType)) {
       return send({ metas: [] }, 404);
     }
@@ -258,7 +261,7 @@ export default {
       return send({ error: options.error, code: options.code }, 400);
     }
     const { skip, search, genre = "", artwork = "" } = options;
-    const project = (metas) => projectCatalogPosters(projectCatalogMetas(metas, titlePreference), artwork);
+    const project = (metas) => projectCatalogPosters(projectCatalogMetas(metas, titlePreference), artwork, { titlePreference });
     const permit = await acquireCatalogRequestPermit(request);
     if (!permit.allowed) {
       return send(

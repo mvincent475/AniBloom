@@ -16,20 +16,18 @@ const seasons = {
   upcoming: { season: "WINTER", year: 2027 },
 };
 
-test("Top Season is opt-in, never silently enlarges existing default or extended manifests", () => {
-  const defaultList = catalogDefinitions(seasons);
+test("Top Season and extended airing catalogs appear in all manifest variants", () => {
+  const defaults = catalogDefinitions(seasons);
   const extended = catalogDefinitions(seasons, "english", { includeExtended: true });
-  assert.equal(defaultList.length, 8);
-  assert.equal(extended.length, 10);
-  assert.equal(defaultList.some(c => c.id === "top_season"), false);
-  assert.equal(extended.some(c => c.id === "top_season"), false);
+  assert.equal(defaults.length, 11);
+  assert.deepEqual(defaults.map(c => c.id), extended.map(c => c.id));
+  assert.deepEqual(defaults.slice(-3).map(c => c.id), ["airing_today", "upcoming_7_days", "top_season"]);
 
   for (const mode of ["english", "romaji", "native"]) {
     const ranked = buildManifest(seasons, mode, { includeTop: true });
     const both = buildManifest(seasons, mode, { includeTop: true, includeExtended: true });
-    assert.deepEqual(ranked.catalogs.slice(0, 8).map(c => c.id), defaultList.map(c => c.id));
-    assert.equal(ranked.catalogs.length, 9);
-    assert.equal(both.catalogs.length, 11);
+    assert.deepEqual(ranked.catalogs, both.catalogs);
+    assert.equal(ranked.catalogs.length, 11);
     assert.equal(ranked.catalogs.at(-1).id, "top_season");
     assert.equal(ranked.catalogs.at(-1).type, "series");
     assert.match(ranked.catalogs.at(-1).name, mode === "native" ? /人気/ : /Top Anime/);
@@ -59,17 +57,17 @@ test("Top Season ranks at upstream AniList query level before pagination, using 
   assert.equal(metas.length, 3);
 });
 
-test("optional artwork preference is in the manifest while unfiltered values stay unchanged", () => {
+test("standard manifest keeps only catalog filters while legacy artwork request inputs stay supported", () => {
   const list = catalogDefinitions(seasons);
   for (const catalog of list) {
-    const field = catalog.extra.find(e => e.name === "artwork");
-    assert.ok(field, catalog.id);
-    assert.equal(field.isRequired, false);
-    assert.deepEqual(field.options, ["AniList", "BetterPosters", "PostersPlus"]);
+    assert.equal(catalog.extra.some(e => e.name === "artwork"), false, catalog.id);
   }
   assert.deepEqual(normalizeCatalogRequestOptions({}), { ok: true, skip: 0, search: "" });
   assert.deepEqual(normalizeCatalogRequestOptions({ artwork: "  BetterPosters  " }), {
     ok: true, skip: 0, search: "", artwork: "betterposters",
+  });
+  assert.deepEqual(normalizeCatalogRequestOptions({ artwork: "AniList" }), {
+    ok: true, skip: 0, search: "", artwork: "anilist",
   });
   assert.deepEqual(normalizeCatalogRequestOptions({ artwork: "PostersPlus" }), {
     ok: true, skip: 0, search: "", artwork: "postersplus",
@@ -89,7 +87,7 @@ test("public poster URLs are deterministic and require authoritative provider ID
     { id: "tt1234567-unsafe", type: "series", poster: "https://s4.anilist.co/cover4.jpg", extra: {} },
   ];
   const copy = structuredClone(original);
-  assert.equal(normalizePosterPreference("unknown"), "anilist");
+  assert.equal(normalizePosterPreference("unknown"), "betterposters");
   assert.equal(projectCatalogPosters(original, "anilist"), original);
   const better = projectCatalogPosters(original, "betterposters");
   assert.equal(better[0].poster, "https://btttr.cc/poster/imdb/poster-default/tt1234567.jpg");
@@ -135,7 +133,7 @@ test("ranked manifests and catalog extras have explicit local and Vercel routing
         const url = origin + prefix + "/manifest.json";
         const response = await fetch(url);
         assert.equal(response.status, 200, url);
-        assert.equal((await response.json()).catalogs.length, suffix === "/ranked" ? 9 : 11);
+        assert.equal((await response.json()).catalogs.length, 11);
         for (const shape of ["/manifest.json", "/catalog/:type/:id.json", "/catalog/:type/:id/:extra*"]) {
           assert.equal(routes.filter(r => r.source === prefix + shape).length, 1, prefix + shape);
         }
@@ -167,9 +165,10 @@ test("cached catalogs reuse one normalized response across poster selections and
   setCatalogRequestRateLimiterForTests({ async limit() { return { success: true }; } });
   try {
     for (const [path, expectedPoster, expectedTitle] of [
-      ["/catalog/series/current_season.json", cached[0].poster, "Default"],
+      ["/catalog/series/current_season.json", "https://btttr.cc/poster/imdb/poster-default/tt1234567.jpg", "Default"],
       ["/catalog/series/current_season.json?artwork=BetterPosters", "https://btttr.cc/poster/imdb/poster-default/tt1234567.jpg", "Default"],
       ["/romaji/catalog/series/current_season.json?artwork=BetterPosters", "https://btttr.cc/poster/imdb/poster-default/tt1234567.jpg", "Romaji"],
+      ["/native/catalog/series/current_season.json", "https://btttr.cc/poster/imdb/poster-default/tt1234567.jpg?lang=ja", "日本語"],
     ]) {
       const response = await handler.fetch(new Request("https://example.test" + path));
       assert.equal(response.status, 200, path);
@@ -178,7 +177,7 @@ test("cached catalogs reuse one normalized response across poster selections and
       assert.equal(body.metas[0].poster, expectedPoster, path);
       assert.equal(body.metas[0].name, expectedTitle, path);
     }
-    assert.deepEqual(readKeys, [cacheKey, cacheKey, cacheKey]);
+    assert.deepEqual(readKeys, [cacheKey, cacheKey, cacheKey, cacheKey]);
     assert.equal(cached[0].poster, "https://s4.anilist.co/cover.jpg");
   } finally {
     setCatalogRequestRateLimiterForTests(null);
@@ -186,9 +185,9 @@ test("cached catalogs reuse one normalized response across poster selections and
   }
 });
 
-test("Top Season does not become reachable on the ordinary unranked path", async () => {
+test("Top Season is reachable on the canonical path and validates input before upstream calls", async () => {
   const { default: handler } = await import("../api/catalog-source.js");
-  const response = await handler.fetch(new Request("https://example.test/catalog/series/top_season.json"));
-  assert.equal(response.status, 404);
-  assert.deepEqual(await response.json(), { metas: [] });
+  const response = await handler.fetch(new Request("https://example.test/catalog/series/top_season.json?skip=1001"));
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).code, "INVALID_SKIP");
 });

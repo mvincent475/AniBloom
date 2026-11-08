@@ -31,6 +31,7 @@ test("load probe accepts only personal production and preview targets", () => {
 test("no first-party text source refers to the original production host", async () => {
   const root = fileURLToPath(new URL("../", import.meta.url));
   const originalHost = ["anibloom", "vercel", "app"].join(".");
+  const escapedOriginalHost = ["anibloom", "\\.", "vercel", "\\.", "app"].join("");
   const textExtensions = new Set([".js", ".mjs", ".json", ".yml", ".yaml", ".md", ".txt", ".html", ".css", ".svg"]);
   const exclude = new Set(["node_modules", ".git", ".vercel"]);
   const bad = [];
@@ -41,7 +42,7 @@ test("no first-party text source refers to the original production host", async 
       if (item.isDirectory()) await walk(path);
       else if (item.isFile() && textExtensions.has(extname(item.name))) {
         const contents = await readFile(path, "utf8");
-        if (contents.includes(originalHost)) bad.push(path.slice(root.length));
+        if (contents.includes(originalHost) || contents.includes(escapedOriginalHost)) bad.push(path.slice(root.length));
       }
     }
   }
@@ -70,7 +71,7 @@ test("copied GitHub automation remains opt-in and targets this repository", asyn
     "Git-based deployment must stay disabled until CI deployment gating is designed");
 });
 
-test("personal extended manifests remain opt-in across title variants and Vercel routes", async () => {
+test("personal standard and extended manifest aliases retain all eleven catalog IDs across title variants", async () => {
   const { default: manifestHandler } = await import("../api/resolver-manifest.js");
   const { ADDON_VERSION } = await import("../api/version.js");
   const { rewrites } = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
@@ -95,7 +96,7 @@ test("personal extended manifests remain opt-in across title variants and Vercel
       assert.deepEqual(manifest.catalogs.slice(0, 8).map(item => item.id), standardIds, path);
       assert.deepEqual(
         manifest.catalogs.slice(8).map(item => item.id),
-        extended ? ["airing_today", "upcoming_7_days"] : [],
+        ["airing_today", "upcoming_7_days", "top_season"],
         path,
       );
 
@@ -109,7 +110,7 @@ test("personal extended manifests remain opt-in across title variants and Vercel
   }
 });
 
-test("personal opt-in ranked manifests use fixed routes with correct title and artwork options", async () => {
+test("personal ranked aliases expose eleven catalog IDs without default artwork filters", async () => {
   const { default: manifestHandler } = await import("../api/resolver-manifest.js");
   const { ADDON_VERSION } = await import("../api/version.js");
   const { rewrites } = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
@@ -124,12 +125,11 @@ test("personal opt-in ranked manifests use fixed routes with correct title and a
       });
       assert.equal(result.version, ADDON_VERSION, path);
       assert.equal(result.logo, BASE_URL + "/assets/anibloom-icon.png", path);
-      assert.equal(result.catalogs.length, extended ? 11 : 9, path);
+      assert.equal(result.catalogs.length, 11, path);
       assert.equal(result.catalogs.at(-1).id, "top_season", path);
       assert.deepEqual(result.catalogs.slice(8, -1).map(c => c.id),
-        extended ? ["airing_today", "upcoming_7_days"] : [], path);
-      const art = result.catalogs[0].extra.find(x => x.name === "artwork");
-      assert.deepEqual(art?.options, ["AniList", "BetterPosters", "PostersPlus"], path);
+        ["airing_today", "upcoming_7_days"], path);
+      assert.equal(result.catalogs[0].extra.some(x => x.name === "artwork"), false, path);
       const rewrite = rewrites.find(r => r.source === path);
       assert.ok(rewrite, "Missing Vercel rewrite for " + path);
       const destination = new URL(rewrite.destination, BASE_URL);
@@ -137,6 +137,38 @@ test("personal opt-in ranked manifests use fixed routes with correct title and a
       assert.equal(destination.searchParams.get("titleMode"), prefix ? prefix.slice(1) : null, path);
       assert.equal(destination.searchParams.get("ranked"), "1", path);
       assert.equal(destination.searchParams.get("extended"), extended ? "1" : null, path);
+    }
+  }
+});
+
+test("personal default manifest and poster provider aliases retain isolated routes and no credentials", async () => {
+  const { default: manifestHandler } = await import("../api/resolver-manifest.js");
+  const { rewrites } = JSON.parse(await readFile(new URL("../vercel.json", import.meta.url), "utf8"));
+  const expected = [
+    "upcoming_season", "current_season", "previous_season",
+    "upcoming_season_movies", "current_season_movies", "previous_season_movies",
+    "upcoming_3_days", "previous_3_days", "airing_today", "upcoming_7_days", "top_season",
+  ];
+  for (const prefix of ["", "/romaji", "/native"]) {
+    for (const route of ["/manifest.json", "/betterposters/manifest.json", "/postersplus/manifest.json"]) {
+      const path = prefix + route;
+      let result;
+      manifestHandler({ method: "GET", url: path, query: {} }, {
+        status(code) { assert.equal(code, 200); return this; },
+        setHeader() {},
+        json(value) { result = value; return value; },
+      });
+      assert.deepEqual(result.catalogs.map(c => c.id), expected, path);
+      assert.equal(result.logo, BASE_URL + "/assets/anibloom-icon.png", path);
+      assert.equal(result.catalogs.some(c => c.extra.some(x => x.name === "artwork")), false, path);
+      const rewrite = rewrites.find(r => r.source === path);
+      assert.ok(rewrite, "Missing provider manifest rewrite " + path);
+      const dest = new URL(rewrite.destination, BASE_URL);
+      assert.equal(dest.pathname, "/api/resolver-manifest", path);
+      assert.equal(dest.searchParams.get("titleMode"), prefix ? prefix.slice(1) : null, path);
+      const provider = route === "/manifest.json" ? null : route.split("/")[1];
+      assert.equal(dest.searchParams.get("artwork"), provider, path);
+      assert.doesNotMatch(rewrite.destination, /(?:token|access_key|password|secret)=/i);
     }
   }
 });
