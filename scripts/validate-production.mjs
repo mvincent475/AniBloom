@@ -9,7 +9,13 @@ export const PRODUCTION_CATALOG_IDS = [
   "previous_season_movies",
   "upcoming_3_days",
   "previous_3_days",
+  "airing_today",
+  "upcoming_7_days",
+  "top_season",
 ];
+
+// Retained only for explicitly requested historical production dry-runs.
+const LEGACY_EIGHT_PRODUCTION_CATALOG_IDS = PRODUCTION_CATALOG_IDS.slice(0, 8);
 
 const LEGACY_PRODUCTION_CATALOG_IDS = [
   "upcoming_season",
@@ -37,23 +43,26 @@ export function validateManifest(manifest, expectedVersion, { allowLegacy = fals
   if (manifest.id !== "com.marki.nuvio.anime-releases") throw new Error("Manifest addon id is invalid.");
   if (manifest.identityMode !== "provider") throw new Error("Manifest identity mode must be provider.");
   const catalogs = manifest.catalogs || [];
-  const ids = catalogs.map((catalog) => catalog.id);
-  const newContract = JSON.stringify(manifest.resources) === JSON.stringify([{ name: "catalog", types: ["series", "movie"] }])
-    && JSON.stringify(manifest.types) === JSON.stringify(["series", "movie"])
-    && JSON.stringify(ids) === JSON.stringify(PRODUCTION_CATALOG_IDS)
-    && catalogs.every((catalog) => catalog.type === catalogTypeForId(catalog.id));
-  const legacyContract = allowLegacy
-    && JSON.stringify(manifest.resources) === JSON.stringify([{ name: "catalog", types: ["series"] }])
-    && JSON.stringify(manifest.types) === JSON.stringify(["series"])
-    && JSON.stringify(ids) === JSON.stringify(LEGACY_PRODUCTION_CATALOG_IDS)
-    && catalogs.every((catalog) => catalog.type === "series");
-  if (!newContract && !legacyContract) {
-    if (JSON.stringify(ids) !== JSON.stringify(PRODUCTION_CATALOG_IDS) && JSON.stringify(ids) !== JSON.stringify(LEGACY_PRODUCTION_CATALOG_IDS)) {
-      throw new Error("Manifest catalogs do not match the eight supported catalogs.");
-    }
-    if (catalogs.some((catalog) => catalog.type !== catalogTypeForId(catalog.id))) {
-      throw new Error("Manifest catalog types do not match their catalog IDs.");
-    }
+  if (!Array.isArray(catalogs)) throw new Error("Manifest catalogs must be an array.");
+  const ids = catalogs.map((catalog) => catalog?.id);
+  const sameCatalogIds = (expected) => expected.length === ids.length
+    && expected.every((id, index) => ids[index] === id);
+  const hasMovieAndSeriesResources = JSON.stringify(manifest.resources) === JSON.stringify([{ name: "catalog", types: ["series", "movie"] }])
+    && JSON.stringify(manifest.types) === JSON.stringify(["series", "movie"]);
+  const hasSeriesOnlyResources = JSON.stringify(manifest.resources) === JSON.stringify([{ name: "catalog", types: ["series"] }])
+    && JSON.stringify(manifest.types) === JSON.stringify(["series"]);
+  const correctlyTyped = catalogs.every((catalog) => catalog?.type === catalogTypeForId(catalog?.id));
+  const currentContract = hasMovieAndSeriesResources && sameCatalogIds(PRODUCTION_CATALOG_IDS) && correctlyTyped;
+  const legacyEightContract = allowLegacy && hasMovieAndSeriesResources
+    && sameCatalogIds(LEGACY_EIGHT_PRODUCTION_CATALOG_IDS) && correctlyTyped;
+  const legacySeriesContract = allowLegacy && hasSeriesOnlyResources
+    && sameCatalogIds(LEGACY_PRODUCTION_CATALOG_IDS) && correctlyTyped;
+  if (!currentContract && !legacyEightContract && !legacySeriesContract) {
+    const knownIds = sameCatalogIds(PRODUCTION_CATALOG_IDS)
+      || (allowLegacy && (sameCatalogIds(LEGACY_EIGHT_PRODUCTION_CATALOG_IDS)
+        || sameCatalogIds(LEGACY_PRODUCTION_CATALOG_IDS)));
+    if (!knownIds) throw new Error("Manifest catalogs do not match the supported catalog contract.");
+    if (!correctlyTyped) throw new Error("Manifest catalog types do not match their catalog IDs.");
     throw new Error("Manifest resources do not match the Nuvio catalog contract.");
   }
   return true;

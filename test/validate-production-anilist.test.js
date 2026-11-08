@@ -63,7 +63,7 @@ test("legacy production manifest is accepted only for explicit dry-run compatibi
   assert.equal(validateManifest(manifest, "1.120.0", { allowLegacy: true }), true);
 });
 
-test("production manifest validator requires matching movie and series catalog types", () => {
+test("historical eight-catalog manifest requires explicit legacy mode and correct movie/series types", () => {
   const ids = ["upcoming_season", "current_season", "previous_season", "upcoming_season_movies", "current_season_movies", "previous_season_movies", "upcoming_3_days", "previous_3_days"];
   const manifest = {
     version: "1.121.0",
@@ -73,8 +73,9 @@ test("production manifest validator requires matching movie and series catalog t
     types: ["series", "movie"],
     catalogs: ids.map((id) => ({ id, type: id.endsWith("_movies") ? "movie" : "series", pageSize: 50 })),
   };
-  assert.equal(validateManifest(manifest, "1.121.0"), true);
-  assert.throws(() => validateManifest({ ...manifest, catalogs: manifest.catalogs.map((c) => c.id === "current_season_movies" ? { ...c, type: "series" } : c) }, "1.121.0"), /catalog types/);
+  assert.throws(() => validateManifest(manifest, "1.121.0"), /catalog contract/);
+  assert.equal(validateManifest(manifest, "1.121.0", { allowLegacy: true }), true);
+  assert.throws(() => validateManifest({ ...manifest, catalogs: manifest.catalogs.map((c) => c.id === "current_season_movies" ? { ...c, type: "series" } : c) }, "1.121.0", { allowLegacy: true }), /catalog types/);
 });
 
 
@@ -128,7 +129,7 @@ test("production validation inspects every catalog page for duplicate identities
   };
 
   await assert.rejects(
-    validateProduction("https://example.test", "1.109.0", fetchImpl),
+    validateProduction("https://example.test", "1.109.0", fetchImpl, { allowLegacy: true }),
     /current_season: duplicate catalog identity across pages/,
   );
   assert.ok(requests.includes("/catalog/series/current_season.json?skip=50"));
