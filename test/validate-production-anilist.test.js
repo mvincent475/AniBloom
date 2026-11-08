@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { validateCatalog, validateLogoAsset, validateManifest, validateProduction } from "../scripts/validate-production.mjs";
+import { PRODUCTION_CATALOG_IDS, validateCatalog, validateLogoAsset, validateManifest, validateProduction } from "../scripts/validate-production.mjs";
 
 test("current-season production validation requires at least one external provider identity", () => {
   assert.throws(() => validateCatalog({
@@ -133,4 +133,11 @@ test("production validation inspects every catalog page for duplicate identities
     /current_season: duplicate catalog identity across pages/,
   );
   assert.ok(requests.includes("/catalog/series/current_season.json?skip=50"));
+});
+
+test("retired catalog ids are never included in the default production validator contract", () => {
+  assert.equal(PRODUCTION_CATALOG_IDS.length, 9);
+  assert.ok(!PRODUCTION_CATALOG_IDS.includes("airing_today"));
+  assert.ok(!PRODUCTION_CATALOG_IDS.includes("upcoming_7_days"));
+  assert.equal(PRODUCTION_CATALOG_IDS.at(-1), "top_season");
 });

@@ -9,12 +9,17 @@ export const PRODUCTION_CATALOG_IDS = [
   "previous_season_movies",
   "upcoming_3_days",
   "previous_3_days",
+  "top_season",
+];
+
+// Historical manifest layouts are accepted only for explicitly requested dry-runs.
+const LEGACY_ELEVEN_PRODUCTION_CATALOG_IDS = [
+  ...PRODUCTION_CATALOG_IDS.slice(0, 8),
   "airing_today",
   "upcoming_7_days",
   "top_season",
 ];
 
-// Retained only for explicitly requested historical production dry-runs.
 const LEGACY_EIGHT_PRODUCTION_CATALOG_IDS = PRODUCTION_CATALOG_IDS.slice(0, 8);
 
 const LEGACY_PRODUCTION_CATALOG_IDS = [
@@ -53,13 +58,16 @@ export function validateManifest(manifest, expectedVersion, { allowLegacy = fals
     && JSON.stringify(manifest.types) === JSON.stringify(["series"]);
   const correctlyTyped = catalogs.every((catalog) => catalog?.type === catalogTypeForId(catalog?.id));
   const currentContract = hasMovieAndSeriesResources && sameCatalogIds(PRODUCTION_CATALOG_IDS) && correctlyTyped;
+  const legacyElevenContract = allowLegacy && hasMovieAndSeriesResources
+    && sameCatalogIds(LEGACY_ELEVEN_PRODUCTION_CATALOG_IDS) && correctlyTyped;
   const legacyEightContract = allowLegacy && hasMovieAndSeriesResources
     && sameCatalogIds(LEGACY_EIGHT_PRODUCTION_CATALOG_IDS) && correctlyTyped;
   const legacySeriesContract = allowLegacy && hasSeriesOnlyResources
     && sameCatalogIds(LEGACY_PRODUCTION_CATALOG_IDS) && correctlyTyped;
-  if (!currentContract && !legacyEightContract && !legacySeriesContract) {
+  if (!currentContract && !legacyElevenContract && !legacyEightContract && !legacySeriesContract) {
     const knownIds = sameCatalogIds(PRODUCTION_CATALOG_IDS)
-      || (allowLegacy && (sameCatalogIds(LEGACY_EIGHT_PRODUCTION_CATALOG_IDS)
+      || (allowLegacy && (sameCatalogIds(LEGACY_ELEVEN_PRODUCTION_CATALOG_IDS)
+        || sameCatalogIds(LEGACY_EIGHT_PRODUCTION_CATALOG_IDS)
         || sameCatalogIds(LEGACY_PRODUCTION_CATALOG_IDS)));
     if (!knownIds) throw new Error("Manifest catalogs do not match the supported catalog contract.");
     if (!correctlyTyped) throw new Error("Manifest catalog types do not match their catalog IDs.");
