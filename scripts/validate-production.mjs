@@ -1,4 +1,5 @@
 import { retryTransientProductionFetch } from "./retry-production-fetch.mjs";
+import { createBudgetedProductionFetch } from "./production-request-budget.mjs";
 import { catalogDefinitions, getSeasonInfo } from "../lib/catalog-config.js";
 
 // Canonical runtime catalog definitions; preserve personal legacy dry-run contracts.
@@ -165,10 +166,12 @@ export async function validateProduction(
   fetchImpl = fetch,
   {
     allowLegacy = false,
+    maxRequests = 100,
     manifestRetryDelayMs = DEFAULT_MANIFEST_RETRY_DELAY_MS,
     rollingRetryDelayMs = DEFAULT_ROLLING_RETRY_DELAY_MS,
   } = {},
 ) {
+  fetchImpl = createBudgetedProductionFetch(fetchImpl, maxRequests);
   const base = String(baseUrl).replace(/\/$/, "");
   // Vercel edge locations may briefly serve the previous release after the
   // first production smoke check passes. Retry only the inexpensive manifest
@@ -222,7 +225,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const baseUrl = process.env.PRODUCTION_BASE_URL || "https://anibloom-personal.vercel.app";
   const expectedVersion = process.env.EXPECTED_VERSION;
   if (!expectedVersion) throw new Error("EXPECTED_VERSION is required.");
-  await validateProduction(baseUrl, expectedVersion, (url) => retryTransientProductionFetch(fetch, url), { allowLegacy: process.env.ALLOW_LEGACY_PRODUCTION_CONTRACT === "true" });
+  // Budget actual HTTP attempts inside retries, as well as logical validator requests.
+  const budget = Number(process.env.MAX_PRODUCTION_REQUESTS || 100);
+  const fetchWithBudget = createBudgetedProductionFetch(fetch, budget);
+  await validateProduction(baseUrl, expectedVersion, (url) => retryTransientProductionFetch(fetchWithBudget, url), {
+    allowLegacy: process.env.ALLOW_LEGACY_PRODUCTION_CONTRACT === "true", maxRequests: budget,
+  });
   console.log("Production validation passed.");
 }
 
