@@ -1,5 +1,7 @@
 # GitHub workflow and hosted-request audit — November 14, 2026
 
+> Originally recorded for AniBloomHQ upstream. AniBloom Personal retains its own protected deployment workflow and independently tracked Vercel releases.
+
 Update, November 15: the workflow-only safeguards were merged to `main` in
 [PR #573](https://github.com/AniBloomHQ/AniBloom/pull/573), commit
 `e3a9a30d4d1f18e066d9082c7c640dfc8db787e8`. Main tests, secret scanning and
@@ -94,5 +96,5 @@ partial captures count as successful.
 No production requests, workflow dispatches, hosted account/project configuration
 changes or deployment attempts were made for this work. Workflow safeguards can
 be published through the normal PR/required-CI path without invoking a release.
-The local cache benchmarks reject requests to `anibloom.vercel.app` and contact
+The local cache benchmarks reject requests to the upstream and AniBloom Personal production hosts and contact
 public providers directly.

@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { isHostedAniBloomHost } from "../lib/benchmark-host-policy.js";
 
 const { values } = parseArgs({ options: {
   root: { type: "string", default: fileURLToPath(new URL("..", import.meta.url)) },
@@ -31,7 +32,7 @@ const originalFetch = globalThis.fetch;
 const network = {};
 globalThis.fetch = async (input, options) => {
   const host = new URL(typeof input === "string" || input instanceof URL ? input : input.url).hostname;
-  if (host === "anibloom.vercel.app") throw new Error("Hosted AniBloom requests are forbidden in this local benchmark");
+  if (isHostedAniBloomHost(host)) throw new Error("Hosted AniBloom requests are forbidden in this local benchmark");
   const record = network[host] ||= { requests: 0, failures: 0 };
   record.requests++;
   try {

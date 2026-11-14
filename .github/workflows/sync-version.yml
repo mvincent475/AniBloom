@@ -242,7 +242,7 @@ jobs:
           printf 'url = "%s"\n' "$VERCEL_DEPLOY_HOOK_URL" | curl --config - --fail --silent --show-error --request POST
 
       - name: Production smoke test
-        if: steps.gate.outputs.release == 'true' || inputs.dry_run == true
+        if: steps.gate.outputs.release == 'true' && steps.gate.outputs.live_requests == 'true'
         env:
           REDEPLOY: ${{ steps.gate.outputs.redeploy }}
           RELEASE_TARGET_SHA: ${{ steps.gate.outputs.release_target_sha }}
