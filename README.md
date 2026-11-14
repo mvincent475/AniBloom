@@ -6,7 +6,7 @@
 
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-2.21.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
+[![Version](https://img.shields.io/badge/version-2.22.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
 
 > Where anime blooms.
 >
@@ -73,6 +73,44 @@ https://anibloom-personal.vercel.app/manifest.json
 ```
 
 For manual installation, use the same manifest URL.
+
+### Guided setup and website previews (development)
+
+The homepage's **installation guide** offers Web, Mobile and TV steps, a
+**Copy manifest URL** button, and a QR code for the selected English/Romaji/Native
+manifest. The QR code is generated locally in the browser, without an external
+QR service. If clipboard access is denied, the page selects the URL for manual
+copying. The guide also explains duplicate installations, metadata providers,
+and how to enable the ninth Top Anime row.
+
+Select any catalog card to open a poster-and-title preview. A preview uses a
+prepared catalog when available; otherwise it requests one AniList discovery
+page and skips provider-ID mapping. It displays up to 12 titles and reuses successful
+responses in the current page for 60 seconds, separately for each title language.
+There is no catalog prefetch, pagination, polling, or automatic retry. Closing
+the dialog cancels an unfinished request; temporary errors offer a manual retry
+that respects `Retry-After`. External posters load directly in the browser;
+failed or invalid images show a placeholder. Discovery previews use original
+AniList covers, so enhanced artwork in Nuvio can differ. Without JavaScript or dialog
+support, catalog links retain their original JSON destination.
+
+These features become publicly available on AniBloom Personal only after a verified production release.
+For a local instance whose manifests should also point locally, run:
+
+```bash
+ANIBLOOM_PUBLIC_ORIGIN=http://localhost:3000 npm run dev
+```
+
+Open `http://localhost:3000`. A localhost manifest or QR link works only on the
+same computer. For another device, configure a reachable LAN or HTTPS origin as
+described below; local HTTP installation depends on the Nuvio client.
+
+The local server also enables prepared-page persistence, verified identity reuse,
+compact provider lookup caching, and bounded catalog builds. See the
+[fast local catalog pipeline](docs/fast-local-catalogs.md) for behavior and limits.
+The [identity provider audit](docs/identity-provider-audit.md) records the latest
+matching fixes, live correctness checks, timings and remaining optimization work.
+
 
 ### Anime title preferences and existing installations
 
@@ -215,7 +253,7 @@ If AniBloom is useful to you, you can support its ongoing maintenance and hostin
 AniBloom is a JavaScript serverless addon deployed on Vercel.
 
 - **Production:** `v2.21.0`
-- **Development:** `v2.21.0`
+- **Development:** `v2.22.0`
 
 Run the automated test suite:
 
