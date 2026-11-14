@@ -80,7 +80,7 @@ test("historical eight-catalog manifest requires explicit legacy mode and correc
 
 
 test("production validation inspects every catalog page for duplicate identities", async () => {
-  const catalogIds = ["upcoming_season", "current_season", "previous_season", "upcoming_season_movies", "current_season_movies", "previous_season_movies", "upcoming_3_days", "previous_3_days"];
+  const catalogIds = ["upcoming_season", "current_season", "previous_season", "upcoming_season_movies", "current_season_movies", "previous_season_movies", "upcoming_3_days", "previous_3_days", "top_season"];
   const manifest = {
     id: "com.marki.nuvio.anime-releases",
     version: "1.109.0",
