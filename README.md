@@ -6,7 +6,7 @@
 
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-2.22.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
+[![Version](https://img.shields.io/badge/version-2.23.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
 
 > Where anime blooms.
 >
@@ -110,6 +110,10 @@ compact provider lookup caching, and bounded catalog builds. See the
 [fast local catalog pipeline](docs/fast-local-catalogs.md) for behavior and limits.
 The [identity provider audit](docs/identity-provider-audit.md) records the latest
 matching fixes, live correctness checks, timings and remaining optimization work.
+The [shared provider cache comparison](docs/shared-provider-cache-results.md)
+measures fresh-process rebuilds with the new Anime Mapper and positive Kitsu
+caches. The [workflow cost audit](docs/workflow-cost-audit.md) identifies which
+manual checks contact the hosted addon and how to reduce those requests.
 
 
 ### Anime title preferences and existing installations
@@ -253,7 +257,7 @@ If AniBloom is useful to you, you can support its ongoing maintenance and hostin
 AniBloom is a JavaScript serverless addon deployed on Vercel.
 
 - **Production:** `v2.22.0`
-- **Development:** `v2.22.0`
+- **Development:** `v2.23.0`
 
 Run the automated test suite:
 
