@@ -6,7 +6,7 @@
 
 [![Nuvio](https://img.shields.io/badge/Nuvio-addon-ff6f61.svg)](https://nuvio.tv)
 [![Vercel](https://img.shields.io/badge/deployed_on-Vercel-black.svg?logo=vercel)](https://vercel.com)
-[![Version](https://img.shields.io/badge/version-2.20.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
+[![Version](https://img.shields.io/badge/version-2.21.0-blue.svg)](https://github.com/mvincent475/AniBloom/releases)
 
 > Where anime blooms.
 >
@@ -32,6 +32,8 @@ AniBloom advertises these nine catalogs through one manifest:
 One additional ranked catalog is included in the **original** manifest:
 
 - **Top Anime of the Season** — Popular current-season anime using upstream popularity ordering.
+
+**Finding Top Anime in Nuvio:** This is the **ninth catalog** in the manifest. Some Nuvio versions display only the first eight Home rows initially, so an installed addon can be working correctly even if Top Anime is not immediately visible. In Nuvio Web, open **Settings → Home** to enable or reorder the Top Anime row; on supported TV/mobile builds, look for Catalog Customization. Do not install a separate ranked/extended manifest: those are compatibility aliases of the same nine catalogs.
 
 **Manage your Home rows in Nuvio:** In supported Nuvio Web clients, go to **Settings → Home** to show, hide, and reorder catalog rows. On supported TV/mobile clients, look for **Catalog Customization** or **Reorder Home Catalogs**. The exact menu may vary by platform/version; disabling a catalog on some clients may also make it unavailable to collections. Installing all nine catalogs may increase initial requests until unwanted rows are disabled, particularly for the ranked feed. AniBloom itself does not auto-fetch all nine from the homepage. [Nuvio Web settings documentation](https://orochibraru.com/nuvio-web/docs/profiles-and-settings).
 
@@ -129,6 +131,8 @@ You can run your own AniBloom instance instead of using the public deployment. T
 
    If Nuvio runs on a different device, `localhost` refers to that device—not the computer hosting AniBloom. In that case, use the host computer's reachable LAN address and ensure its firewall allows the chosen port. Only expose the server to networks you trust.
 
+**Public origin for self-hosting:** AniBloom Personal's public URL remains the default. To advertise your own HTTPS domain consistently in the manifest logo, catalog cards, and Nuvio install links, configure the **non-secret** environment variable `ANIBLOOM_PUBLIC_ORIGIN` to the origin only (e.g. `https://anime.example.org`). Do not include a path, credentials, query, fragment or private token. Invalid values are rejected at startup rather than silently generating incorrect or unsafe links. Local development may use private HTTP addresses such as `http://localhost:3000` or `http://192.168.1.12:3000` only outside Vercel/production; public deployments require HTTPS. The request `Host` header is never used to choose the advertised origin. If using a local HTTP address, Nuvio's remote-device/HTTPS restrictions may require manual installation or a proper HTTPS reverse proxy. See [P1 validation and self-hosting guidance](docs/p1-validation.md).
+
 The local preview server implements the homepage, manifest, version, catalog, and static asset routes. It is intended for local use and development; use the Vercel deployment option below for a public, serverless instance.
 
 ### Option 2: Deploy to your own Vercel project
@@ -211,7 +215,7 @@ If AniBloom is useful to you, you can support its ongoing maintenance and hostin
 AniBloom is a JavaScript serverless addon deployed on Vercel.
 
 - **Production:** `v2.20.0`
-- **Development:** `v2.20.0`
+- **Development:** `v2.21.0`
 
 Run the automated test suite:
 

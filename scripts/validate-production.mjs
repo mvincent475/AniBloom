@@ -1,16 +1,10 @@
 import { retryTransientProductionFetch } from "./retry-production-fetch.mjs";
+import { catalogDefinitions, getSeasonInfo } from "../lib/catalog-config.js";
 
-export const PRODUCTION_CATALOG_IDS = [
-  "upcoming_season",
-  "current_season",
-  "previous_season",
-  "upcoming_season_movies",
-  "current_season_movies",
-  "previous_season_movies",
-  "upcoming_3_days",
-  "previous_3_days",
-  "top_season",
-];
+// Canonical runtime catalog definitions; preserve personal legacy dry-run contracts.
+const CURRENT_CATALOGS = catalogDefinitions(getSeasonInfo(new Date("2026-11-09T12:00:00Z")));
+export const PRODUCTION_CATALOG_IDS = Object.freeze(CURRENT_CATALOGS.map(catalog => catalog.id));
+const PRODUCTION_CATALOG_TYPES = new Map(CURRENT_CATALOGS.map(catalog => [catalog.id, catalog.type]));
 
 // Historical manifest layouts are accepted only for explicitly requested dry-runs.
 const LEGACY_ELEVEN_PRODUCTION_CATALOG_IDS = [
@@ -19,25 +13,12 @@ const LEGACY_ELEVEN_PRODUCTION_CATALOG_IDS = [
   "upcoming_7_days",
   "top_season",
 ];
-
 const LEGACY_EIGHT_PRODUCTION_CATALOG_IDS = PRODUCTION_CATALOG_IDS.slice(0, 8);
-
 const LEGACY_PRODUCTION_CATALOG_IDS = [
-  "upcoming_season",
-  "current_season",
-  "previous_season",
-  "upcoming_3_days",
-  "previous_3_days",
+  "upcoming_season", "current_season", "previous_season", "upcoming_3_days", "previous_3_days",
 ];
-
-const MOVIE_CATALOG_IDS = new Set([
-  "upcoming_season_movies",
-  "current_season_movies",
-  "previous_season_movies",
-]);
-
 export function catalogTypeForId(catalogId) {
-  return MOVIE_CATALOG_IDS.has(catalogId) ? "movie" : "series";
+  return PRODUCTION_CATALOG_TYPES.get(catalogId) || "series";
 }
 
 const ID_PATTERN = /^(tt\d+|tvdb:[1-9]\d*|tmdb:[1-9]\d*|mal:[1-9]\d*|anilist:[1-9]\d*|kitsu:[1-9]\d*)$/;
