@@ -259,7 +259,7 @@ If AniBloom is useful to you, you can support its ongoing maintenance and hostin
 
 AniBloom is a JavaScript serverless addon deployed on Vercel.
 
-- **Production:** `v2.24.0`
+- **Production:** `v2.25.0`
 - **Development:** `v2.25.0`
 
 Run the automated test suite:
