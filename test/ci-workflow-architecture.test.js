@@ -18,6 +18,10 @@ test("main CI uses a scoped GitHub App token for automated PR events", () => {
   assert.ok(ci.includes("name: Install locked dependencies\n        run: npm ci --ignore-scripts"));
   assert.ok(ci.includes("npm audit --omit=dev --audit-level=high"));
   assert.ok(ci.includes("name: Run tests\n        run: npm test"));
+  const mainTestJob = ci.split("  version-automation:")[0];
+  assert.ok(mainTestJob.includes("persist-credentials: false"));
+  assert.ok(!mainTestJob.includes("contents: write"));
+  assert.ok(!mainTestJob.includes("secrets."));
   assert.ok(ci.includes("node-version: 26"));
   assert.ok(ci.includes("actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"));
   assert.ok(ci.includes("actions/setup-node@820762786026740c76f36085b0efc47a31fe5020"));

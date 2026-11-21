@@ -49,10 +49,11 @@ import { acquireCatalogRefreshLock } from "../lib/catalog-rate-limiter.js";
 import { checkCatalogDeadline, withCatalogDeadline } from "../lib/catalog-deadline.js";
 import { getVerifiedIdentity, setVerifiedIdentity, verifiedIdentityCacheKey } from "../lib/verified-identity-cache.js";
 import { cacheProviderLookup } from "../lib/catalog-provider-cache.js";
-import { prefetchMappingLookup } from "../lib/catalog-prefetch.js";
+import { prefetchMappingLookup, createFallbackPrefetch } from "../lib/catalog-prefetch.js";
 import { configureSharedProviderCaching } from "../lib/shared-provider-cache.js";
 
 let optimizedCatalogs = process.env.ANIBLOOM_OPTIMIZED_CATALOGS === "1";
+const MAX_EARLY_KITSU_ROWS = 4;
 export function configureCatalogPipeline({ optimized = false } = {}) {
   optimizedCatalogs = optimized;
   configureSharedProviderCaching(optimized);
@@ -416,9 +417,14 @@ async function resolveMappingsForRowsUncached(
     diagnostics = null,
     allowProductionIdentityCache = false,
     tmdbResolverBudget = null,
+    prefetchFallbackMappings = null,
   } = {},
 ) {
   const ids = rows.map((row) => Number(row.id));
+  // The final ownership check can revisit queries whose recovery pass already
+  // confirmed an empty response. Keep those facts local to this page.
+  const recoveryEmptyImdbUrls = optimizedCatalogs && resolveImdbMappings === resolveAniListMappingsByImdbSearch
+    ? new Set() : undefined;
   if (optimizedCatalogs) {
     if (resolveFribbMappings === resolveAniListMappingsFribb) resolveFribbMappings = cacheProviderLookup("fribb", resolveFribbMappings, rows, { cacheEmpty: true });
     if (resolveAniBridgeMappings === resolveAniListMappingsByAniBridge) resolveAniBridgeMappings = cacheProviderLookup("anibridge", targets => resolveAniListMappingsByAniBridge(targets, { preferCompressed: true }), rows, { cacheEmpty: true });
@@ -634,10 +640,21 @@ async function resolveMappingsForRowsUncached(
   }
   if (diagnostics) diagnostics.imdbVerification = performance.now() - tmdbImdbVerificationStart;
 
-  unresolvedRows = rows.filter((row) => !selectProviderIdentity(
+  const selectionsAfterTmdb = rows.map((row) => selectProviderIdentity(
     { ...row, anilistId: Number(row.id) },
     getProviderCandidates({ ...row, anilistId: Number(row.id) }, mappings.get(Number(row.id)) || []),
   ));
+  unresolvedRows = rows.filter((_, index) => !selectionsAfterTmdb[index]);
+
+  // AniMap, IDMapper, Anime Mapper and TSV only receive unresolved rows.
+  // Start the IMDb searches already required for selected non-TMDB rows
+  // while those sources work, and merge them at the original IMDb stage.
+  const earlyImdbRows = optimizedCatalogs && rows.length >= 10 && unresolvedRows.length
+    ? rows.filter((_, index) => selectionsAfterTmdb[index] && selectionsAfterTmdb[index].provider !== "tmdb")
+    : [];
+  const loadInitialImdbMappings = earlyImdbRows.length
+    ? prefetchMappingLookup(resolveImdbMappings, earlyImdbRows, { retryOnError: true })
+    : resolveImdbMappings;
 
   if (unresolvedRows.length) {
     try {
@@ -733,7 +750,7 @@ async function resolveMappingsForRowsUncached(
   if (unresolvedRows.length) {
     try {
       const stageStart = diagnostics ? performance.now() : 0;
-      mappings = mergeMappings(mappings, await resolveImdbMappings(unresolvedRows));
+      mappings = mergeMappings(mappings, await loadInitialImdbMappings(unresolvedRows));
       if (diagnostics) diagnostics.imdb = performance.now() - stageStart;
     } catch (error) {
       console.error("[identity] IMDb mapping failed; trying secondary sources", error);
@@ -744,6 +761,20 @@ async function resolveMappingsForRowsUncached(
     { ...row, anilistId: Number(row.id) },
     getProviderCandidates({ ...row, anilistId: Number(row.id) }, mappings.get(Number(row.id)) || []),
   ));
+
+  const prefetchKitsu = (targets) => {
+    prefetchFallbackMappings(targets.map(row => {
+      const malId = getCanonicalMalId(row, null, mappings.get(Number(row.id)) || []);
+      return { id: Number(row.id), idMal: malId, currentFallbackId: malId ? `mal:${malId}` : `anilist:${row.id}` };
+    }));
+    if (diagnostics) diagnostics.kitsuPrefetchedRows = targets.length;
+  };
+  // Start with the small residual group still unmatched after primary IMDb
+  // search. Later provider recovery can still win, and a changed MAL/AniList
+  // lookup key still goes through the final resolver.
+  const startKitsuEarly = typeof prefetchFallbackMappings === "function"
+    && rows.length >= 10 && unresolvedRows.length > 0 && unresolvedRows.length <= MAX_EARLY_KITSU_ROWS;
+  if (startKitsuEarly) prefetchKitsu(unresolvedRows);
 
   if (unresolvedRows.length) {
     try {
@@ -772,7 +803,7 @@ async function resolveMappingsForRowsUncached(
       ["IDMapper", () => resolveIdMapperMappings(recoveryIds)],
       ["Anime Mapper", () => resolveAnimeMapperMappings(stillUnresolvedRows)],
       ["secondary", () => resolveSecondaryMappings(recoveryIds)],
-      ["IMDb", () => resolveImdbMappings(stillUnresolvedRows)],
+      ["IMDb", () => resolveImdbMappings(stillUnresolvedRows, { emptySuggestionUrls: recoveryEmptyImdbUrls })],
     ];
 
     const recoveryResults = await Promise.all(
@@ -815,6 +846,10 @@ async function resolveMappingsForRowsUncached(
     { ...row, anilistId: Number(row.id) },
     getProviderCandidates({ ...row, anilistId: Number(row.id) }, mappings.get(Number(row.id)) || []),
   ));
+
+  if (!startKitsuEarly && typeof prefetchFallbackMappings === "function" && stillUnresolvedRows.length) {
+    prefetchKitsu(stillUnresolvedRows);
+  }
 
   if (stillUnresolvedRows.length) {
     try {
@@ -880,11 +915,18 @@ async function resolveMappingsForRowsUncached(
       : new Map();
     const canonicalRows = [];
     const canonicalByCurrentId = new Map();
+    const currentImdbById = new Map();
     for (const [currentId, root] of canonicalRoots instanceof Map ? canonicalRoots : []) {
       if (!root?.canonicalTitle || !root?.canonicalMalId) continue;
       if (String(root.canonicalType || "").toUpperCase() === "MOVIE") continue;
       const currentRow = rows.find((row) => Number(row?.id) === Number(currentId));
       if (!currentRow) continue;
+      const currentMedia = { ...currentRow, anilistId: Number(currentId) };
+      currentImdbById.set(Number(currentId), selectProviderIdentity(
+        currentMedia,
+        getProviderCandidates(currentMedia, mappings.get(Number(currentId)) || []).filter(candidate =>
+          candidate.provider === "imdb" && hasStrongDirectProviderEvidence(candidate)),
+      ));
       canonicalByCurrentId.set(Number(currentId), root);
       canonicalRows.push({
         ...currentRow,
@@ -898,7 +940,16 @@ async function resolveMappingsForRowsUncached(
       });
     }
     if (canonicalRows.length) {
-      const canonicalImdb = await resolveImdbMappings(canonicalRows);
+      // A canonical TMDB root already determines publication when there is no
+      // strong current IMDb identity to protect. An additional root IMDb search
+      // cannot change that choice. Keep it for missing TMDB roots and conflicts.
+      const canonicalImdbRows = canonicalRows.filter(row => {
+        const tmdbId = Number(canonicalByCurrentId.get(Number(row.id))?.canonicalExternal?.tmdb);
+        return !optimizedCatalogs || !Number.isInteger(tmdbId) || tmdbId <= 0
+          || currentImdbById.get(Number(row.id));
+      });
+      if (diagnostics) diagnostics.canonicalImdbRowsSkipped = canonicalRows.length - canonicalImdbRows.length;
+      const canonicalImdb = canonicalImdbRows.length ? await resolveImdbMappings(canonicalImdbRows) : new Map();
       for (const [currentId, root] of canonicalByCurrentId) {
         if (!root) continue;
         const records = canonicalImdb instanceof Map ? canonicalImdb.get(Number(currentId)) : [];
@@ -934,20 +985,7 @@ async function resolveMappingsForRowsUncached(
             relation: false,
           })),
         ];
-        const currentRow = rows.find((row) => Number(row?.id) === Number(currentId));
-        const currentCandidates = currentRow
-          ? getProviderCandidates(
-            { ...currentRow, anilistId: Number(currentId) },
-            mappings.get(Number(currentId)) || [],
-          )
-          : [];
-        const independentlyVerifiedCurrentImdb = selectProviderIdentity(
-          { ...(currentRow || {}), anilistId: Number(currentId) },
-          currentCandidates.filter((candidate) =>
-            candidate.provider === "imdb"
-            && hasStrongDirectProviderEvidence(candidate),
-          ),
-        );
+        const independentlyVerifiedCurrentImdb = currentImdbById.get(Number(currentId));
         const canonicalImdbIds = new Set(
           canonicalRecords.flatMap((record) =>
             Array.isArray(record?.imdbIds)
@@ -981,7 +1019,7 @@ async function resolveMappingsForRowsUncached(
   if (relationRetryRows.length) {
     const stageStart = diagnostics ? performance.now() : 0;
     try {
-      const retryMappings = await resolveImdbMappings(relationRetryRows);
+      const retryMappings = await resolveImdbMappings(relationRetryRows, { emptySuggestionUrls: recoveryEmptyImdbUrls });
       for (const [id, records] of retryMappings instanceof Map ? retryMappings : []) {
         const existing = mappings.get(id) || [];
         mappings.set(id, [
@@ -1750,7 +1788,12 @@ export async function canonicalizeCatalogPage(mediaRows, options = {}) {
       .filter((row) => /^\d+$/.test(String(row.id ?? "").trim()))
     : [];
   if (!normalizedRows.length) return [];
-  const mappings = await resolveMappingsForRows(normalizedRows, normalizedOptions);
+  const kitsuResolver = normalizedOptions.resolveKitsuMappings || resolveAniListKitsuMappings;
+  const kitsuPrefetch = optimizedCatalogs && normalizedOptions.enableKitsuFallback === true
+    ? createFallbackPrefetch(kitsuResolver) : null;
+  const mappings = await resolveMappingsForRows(normalizedRows, {
+    ...normalizedOptions, prefetchFallbackMappings: kitsuPrefetch?.start,
+  });
   const metas = [];
   const usedIdentities = new Set();
   const unresolvedIds = [];
@@ -1866,7 +1909,7 @@ export async function canonicalizeCatalogPage(mediaRows, options = {}) {
   const finalMetas = normalizedOptions.enableKitsuFallback === true
     ? await applyKitsuFallback(
       metas,
-      normalizedOptions.resolveKitsuMappings || resolveAniListKitsuMappings,
+      kitsuPrefetch?.resolve || kitsuResolver,
       normalizedOptions.diagnostics,
     )
     : metas;
@@ -1973,6 +2016,8 @@ export async function buildRollingCatalog(id, date, skip, search, {
       const searchedRows = filterAiringRowsBySearch(uniqueEligibleRows, search);
       const identityDiagnostics = diagnostics ? {} : null;
       const mappingStart = diagnostics ? performance.now() : 0;
+      const kitsuPrefetch = optimizedCatalogs && enableKitsuFallback
+        ? createFallbackPrefetch(resolveKitsuMappings) : null;
       const mappings = await resolveMappingsForRows(searchedRows.map((row) => row.media), {
         resolveMappings,
         resolveFribbMappings,
@@ -1992,6 +2037,7 @@ export async function buildRollingCatalog(id, date, skip, search, {
         tmdbResolverBudget,
         diagnostics: identityDiagnostics,
         allowProductionIdentityCache: true,
+        prefetchFallbackMappings: kitsuPrefetch?.start,
       });
       if (diagnostics) {
         identityDiagnostics.identityResolution = performance.now() - mappingStart;
@@ -2113,7 +2159,7 @@ export async function buildRollingCatalog(id, date, skip, search, {
         metas.push(meta);
       }
       const finalMetas = enableKitsuFallback
-        ? await applyKitsuFallback(metas, resolveKitsuMappings, diagnostics)
+        ? await applyKitsuFallback(metas, kitsuPrefetch?.resolve || resolveKitsuMappings, diagnostics)
         : metas;
       const filteredMetas = filterCatalogMetasBySearch(finalMetas, search);
       if (diagnostics) {

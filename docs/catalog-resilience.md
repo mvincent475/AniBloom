@@ -174,6 +174,12 @@ or unknown changes are treated conservatively. When metadata is generated, the
 automation validates the actual release metadata and package-lock version,
 without reinstalling dependencies or rerunning all tests in a second job.
 
+Upstream retired per-merge patch PR generation because multiple commits could
+propose the same patch and diverge from the next release baseline. AniBloom
+Personal retains its opt-in version automation. For intentional releases,
+use `nextReleaseVersion` from `ops/release-state.json` and synchronize all
+version metadata; suppress the extra patch PR on release preparation commits.
+
 During production releases, deployment readiness polling checks only the
 manifest until it advertises the expected version; representative series and
 movie catalogs are then checked by the existing smoke suite (up to three
