@@ -6,7 +6,10 @@ Update, November 15: the workflow-only safeguards were merged to `main` in
 [PR #573](https://github.com/AniBloomHQ/AniBloom/pull/573), commit
 `e3a9a30d4d1f18e066d9082c7c640dfc8db787e8`. Main tests, secret scanning and
 both CodeQL analyses passed. Release and version-automation jobs were skipped.
-The runtime cache implementation remains local.
+The runtime cache implementation was subsequently merged upstream in PR #574.
+Upstream retired per-merge patch PR generation in PR #578 to reduce duplicate
+metadata PRs; AniBloom Personal retains its separately configured opt-in
+version automation and skips redundant bumps on explicit release preparation.
 
 The merge of PR #571 passed main CI, the full Git-history secret scan and
 CodeQL. The controlled release job was **skipped**, so that merge did not run
