@@ -4,6 +4,26 @@ import { canonicalizeCatalogPage } from "../api/catalog-source.js";
 
 const empty = async () => new Map();
 
+// Keep provider-precedence tests offline. In particular, the default
+// canonical-series resolver can fetch a real root that legitimately changes
+// the selected identity and makes the fixture depend on network timing.
+const offlineResolvers = {
+  resolveFribbMappings: empty,
+  resolveExternalMappings: () => new Map(),
+  resolveAnimapMappings: empty,
+  resolveIdMapperMappings: empty,
+  resolveTMDBMappings: empty,
+  resolveAnimeMapperMappings: empty,
+  resolveAnimeMapperRelatedProviderIds: empty,
+  resolveCanonicalSeriesMappings: empty,
+  resolveAniBridgeMappings: empty,
+  resolveTsvMappings: empty,
+  resolveImdbMappings: empty,
+  validateImdbMappings: empty,
+  resolveSecondaryMappings: empty,
+  resolveAlternativeMappings: empty,
+};
+
 test("catalog preserves an independent provider identity when later sources are unavailable", async () => {
   const metas = await canonicalizeCatalogPage([{
     id: 195604,
@@ -24,16 +44,7 @@ test("catalog preserves an independent provider identity when later sources are 
       title: "Black Clover Season 2",
       year: 2026,
     }]]]),
-    resolveFribbMappings: empty,
-    resolveExternalMappings: () => new Map(),
-    resolveAniBridgeMappings: empty,
-    resolveTMDBMappings: empty,
-    resolveAnimapMappings: empty,
-    resolveIdMapperMappings: empty,
-    resolveTsvMappings: empty,
-    resolveImdbMappings: empty,
-    resolveSecondaryMappings: empty,
-    resolveAlternativeMappings: empty,
+    ...offlineResolvers,
   });
 
   assert.equal(metas.length, 1);
@@ -61,11 +72,7 @@ test("later mapping sources supplement unsupported earlier records", async () =>
       title: "Wrong Parent",
       year: 2019,
     }]]]),
-    resolveFribbMappings: empty,
-    resolveExternalMappings: () => new Map(),
-    resolveAniBridgeMappings: empty,
-    resolveTMDBMappings: empty,
-    resolveAnimapMappings: empty,
+    ...offlineResolvers,
     resolveAnimeMapperMappings: async () => new Map([[123, [{
       source: "anime-mapper",
       anilistId: 123,
@@ -78,11 +85,7 @@ test("later mapping sources supplement unsupported earlier records", async () =>
       year: 2026,
       corroborated: true,
     }]]]),
-    resolveIdMapperMappings: empty,
-    resolveTsvMappings: empty,
-    resolveImdbMappings: empty,
-    resolveSecondaryMappings: empty,
-    resolveAlternativeMappings: empty,
+
   });
 
   assert.equal(metas.length, 1);
